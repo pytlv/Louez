@@ -7712,6 +7712,32 @@
         "quote_declined"
       ]
     },
+    "public.ai_chat_message_role": {
+      "name": "ai_chat_message_role",
+      "schema": "public",
+      "values": [
+        "user",
+        "assistant",
+        "system",
+        "tool"
+      ]
+    },
+    "public.billing_mode": {
+      "name": "billing_mode",
+      "schema": "public",
+      "values": [
+        "subscription",
+        "pay_as_you_go"
+      ]
+    },
+    "public.cancelled_reservation_behavior": {
+      "name": "cancelled_reservation_behavior",
+      "schema": "public",
+      "values": [
+        "show",
+        "hide"
+      ]
+    },
     "public.condition_rating": {
       "name": "condition_rating",
       "schema": "public",
@@ -7720,6 +7746,14 @@
         "good",
         "fair",
         "damaged"
+      ]
+    },
+    "public.credential_kind": {
+      "name": "credential_kind",
+      "schema": "public",
+      "values": [
+        "oauth",
+        "api_key"
       ]
     },
     "public.customer_type": {
@@ -7807,6 +7841,14 @@
         "cancelled"
       ]
     },
+    "public.lifecycle_status": {
+      "name": "lifecycle_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "retired"
+      ]
+    },
     "public.member_role": {
       "name": "member_role",
       "schema": "public",
@@ -7850,6 +7892,23 @@
         "transfer",
         "check",
         "other"
+      ]
+    },
+    "public.payment_request_status": {
+      "name": "payment_request_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "completed",
+        "cancelled"
+      ]
+    },
+    "public.payment_request_type": {
+      "name": "payment_request_type",
+      "schema": "public",
+      "values": [
+        "rental",
+        "custom"
       ]
     },
     "public.payment_status": {
@@ -7923,6 +7982,15 @@
         "fixed"
       ]
     },
+    "public.public_mode": {
+      "name": "public_mode",
+      "schema": "public",
+      "values": [
+        "required",
+        "optional",
+        "no_public"
+      ]
+    },
     "public.referral_reward_kind": {
       "name": "referral_reward_kind",
       "schema": "public",
@@ -7978,6 +8046,16 @@
         "declined"
       ]
     },
+    "public.retirement_reason": {
+      "name": "retirement_reason",
+      "schema": "public",
+      "values": [
+        "sold",
+        "lost",
+        "broken",
+        "other"
+      ]
+    },
     "public.review_request_channel": {
       "name": "review_request_channel",
       "schema": "public",
@@ -7994,6 +8072,17 @@
         "completed",
         "failed",
         "refunded"
+      ]
+    },
+    "public.store_integration_status": {
+      "name": "store_integration_status",
+      "schema": "public",
+      "values": [
+        "disabled",
+        "active",
+        "needs_reconnect",
+        "error",
+        "syncing"
       ]
     },
     "public.storefront_event_type": {
@@ -8024,6 +8113,15 @@
         "trialing"
       ]
     },
+    "public.sync_status": {
+      "name": "sync_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "synced",
+        "failed"
+      ]
+    },
     "public.unit_downtime_reason": {
       "name": "unit_downtime_reason",
       "schema": "public",
@@ -8048,24 +8146,6 @@
         "assigned",
         "unassigned",
         "updated"
-      ]
-    },
-    "public.lifecycle_status": {
-      "name": "lifecycle_status",
-      "schema": "public",
-      "values": [
-        "active",
-        "retired"
-      ]
-    },
-    "public.retirement_reason": {
-      "name": "retirement_reason",
-      "schema": "public",
-      "values": [
-        "sold",
-        "lost",
-        "broken",
-        "other"
       ]
     }
   },

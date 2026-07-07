@@ -1,5 +1,9 @@
 CREATE TYPE "public"."activity_type" AS ENUM('created', 'confirmed', 'rejected', 'cancelled', 'picked_up', 'returned', 'note_updated', 'payment_added', 'payment_updated', 'payment_received', 'payment_initiated', 'payment_failed', 'payment_expired', 'deposit_authorized', 'deposit_captured', 'deposit_released', 'deposit_failed', 'access_link_sent', 'modified', 'inspection_departure_started', 'inspection_departure_completed', 'inspection_return_started', 'inspection_return_completed', 'inspection_damage_detected', 'inspection_signed', 'quote_accepted', 'quote_declined');--> statement-breakpoint
+CREATE TYPE "public"."ai_chat_message_role" AS ENUM('user', 'assistant', 'system', 'tool');--> statement-breakpoint
+CREATE TYPE "public"."billing_mode" AS ENUM('subscription', 'pay_as_you_go');--> statement-breakpoint
+CREATE TYPE "public"."cancelled_reservation_behavior" AS ENUM('show', 'hide');--> statement-breakpoint
 CREATE TYPE "public"."condition_rating" AS ENUM('excellent', 'good', 'fair', 'damaged');--> statement-breakpoint
+CREATE TYPE "public"."credential_kind" AS ENUM('oauth', 'api_key');--> statement-breakpoint
 CREATE TYPE "public"."customer_type" AS ENUM('individual', 'business');--> statement-breakpoint
 CREATE TYPE "public"."deposit_status" AS ENUM('none', 'pending', 'card_saved', 'authorized', 'captured', 'released', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."device_type" AS ENUM('mobile', 'tablet', 'desktop');--> statement-breakpoint
@@ -13,6 +17,8 @@ CREATE TYPE "public"."member_role" AS ENUM('owner', 'member');--> statement-brea
 CREATE TYPE "public"."page_type" AS ENUM('home', 'catalog', 'product', 'cart', 'checkout', 'confirmation', 'account', 'rental');--> statement-breakpoint
 CREATE TYPE "public"."payg_invoice_status" AS ENUM('draft', 'open', 'paid', 'failed', 'void');--> statement-breakpoint
 CREATE TYPE "public"."payment_method" AS ENUM('stripe', 'cash', 'card', 'transfer', 'check', 'other');--> statement-breakpoint
+CREATE TYPE "public"."payment_request_status" AS ENUM('pending', 'completed', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."payment_request_type" AS ENUM('rental', 'custom');--> statement-breakpoint
 CREATE TYPE "public"."payment_status" AS ENUM('pending', 'authorized', 'completed', 'failed', 'cancelled', 'refunded');--> statement-breakpoint
 CREATE TYPE "public"."payment_type" AS ENUM('rental', 'deposit', 'deposit_hold', 'deposit_capture', 'deposit_return', 'damage', 'adjustment');--> statement-breakpoint
 CREATE TYPE "public"."platform_fee_source" AS ENUM('online', 'manual', 'free');--> statement-breakpoint
@@ -20,6 +26,7 @@ CREATE TYPE "public"."platform_fee_status" AS ENUM('pending', 'collected', 'bill
 CREATE TYPE "public"."pricing_mode" AS ENUM('hour', 'day', 'week');--> statement-breakpoint
 CREATE TYPE "public"."product_status" AS ENUM('draft', 'active', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."promo_code_type" AS ENUM('percentage', 'fixed');--> statement-breakpoint
+CREATE TYPE "public"."public_mode" AS ENUM('required', 'optional', 'no_public');--> statement-breakpoint
 CREATE TYPE "public"."referral_reward_kind" AS ENUM('free_reservations', 'invoice_credit');--> statement-breakpoint
 CREATE TYPE "public"."referral_reward_status" AS ENUM('granted', 'clawed_back');--> statement-breakpoint
 CREATE TYPE "public"."reminder_audience" AS ENUM('customer', 'admin');--> statement-breakpoint
@@ -29,7 +36,9 @@ CREATE TYPE "public"."reservation_status" AS ENUM('pending', 'confirmed', 'ongoi
 CREATE TYPE "public"."review_request_channel" AS ENUM('email', 'sms');--> statement-breakpoint
 CREATE TYPE "public"."sms_topup_status" AS ENUM('pending', 'completed', 'failed', 'refunded');--> statement-breakpoint
 CREATE TYPE "public"."storefront_event_type" AS ENUM('product_view', 'add_to_cart', 'remove_from_cart', 'update_quantity', 'checkout_started', 'checkout_completed', 'checkout_abandoned', 'payment_initiated', 'payment_completed', 'payment_failed', 'login_requested', 'login_completed');--> statement-breakpoint
+CREATE TYPE "public"."store_integration_status" AS ENUM('disabled', 'active', 'needs_reconnect', 'error', 'syncing');--> statement-breakpoint
 CREATE TYPE "public"."subscription_status" AS ENUM('active', 'cancelled', 'past_due', 'trialing');--> statement-breakpoint
+CREATE TYPE "public"."sync_status" AS ENUM('pending', 'synced', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."unit_downtime_reason" AS ENUM('maintenance', 'repair', 'other');--> statement-breakpoint
 CREATE TYPE "public"."unit_event_type" AS ENUM('created', 'deleted', 'downtime_declared', 'downtime_updated', 'downtime_closed', 'downtime_deleted', 'retired', 'reinstated', 'assigned', 'unassigned', 'updated');--> statement-breakpoint
 CREATE TYPE "public"."lifecycle_status" AS ENUM('active', 'retired');--> statement-breakpoint

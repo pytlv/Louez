@@ -129,6 +129,11 @@ export const subscriptionStatus = pgEnum('subscription_status', [
   'trialing',
 ]);
 
+export const billingMode = pgEnum('billing_mode', [
+  'subscription',
+  'pay_as_you_go',
+]);
+
 export const subscriptions = pgTable(
   'subscriptions',
   {
@@ -145,7 +150,7 @@ export const subscriptions = pgTable(
     // When 'pay_as_you_go', `planSlug` is ignored for limits and the store is
     // billed per rental (see platform_fee / pay_as_you_go_invoices). New stores
     // default to pay-as-you-go.
-    billingMode: pgEnum('billing_mode', ['subscription', 'pay_as_you_go'])('billing_mode')
+    billingMode: billingMode('billing_mode')
       .default('pay_as_you_go')
       .notNull(),
 
@@ -561,6 +566,33 @@ export const stores = pgTable(
 // Integrations
 // ============================================================================
 
+export const storeIntegrationStatus = pgEnum('store_integration_status', [
+  'disabled',
+  'active',
+  'needs_reconnect',
+  'error',
+  'syncing',
+]);
+
+export const credentialKind = pgEnum('credential_kind', ['oauth', 'api_key']);
+
+export const cancelledReservationBehavior = pgEnum(
+  'cancelled_reservation_behavior',
+  ['show', 'hide'],
+);
+
+export const publicMode = pgEnum('public_mode', [
+  'required',
+  'optional',
+  'no_public',
+]);
+
+export const syncStatus = pgEnum('sync_status', [
+  'pending',
+  'synced',
+  'failed',
+]);
+
 export const storeIntegrations = pgTable(
   'store_integrations',
   {
@@ -571,13 +603,7 @@ export const storeIntegrations = pgTable(
     enabled: boolean('enabled').default(false).notNull(),
     connectedByUserId: varchar('connected_by_user_id', { length: 21 }),
     providerAccountEmail: varchar('provider_account_email', { length: 255 }),
-    status: pgEnum('store_integration_status', [
-      'disabled',
-      'active',
-      'needs_reconnect',
-      'error',
-      'syncing',
-    ])('status')
+    status: storeIntegrationStatus('status')
       .default('disabled')
       .notNull(),
     lastHealthCheckAt: timestamp('last_health_check_at', { mode: 'date' }),
@@ -602,7 +628,7 @@ export const integrationCredentials = pgTable(
   {
     id: id(),
     integrationId: varchar('integration_id', { length: 21 }).notNull(),
-    credentialKind: pgEnum('credential_kind', ['oauth', 'api_key'])('credential_kind')
+    credentialKind: credentialKind('credential_kind')
       .default('oauth')
       .notNull(),
     accessTokenEncrypted: text('access_token_encrypted'),
@@ -633,10 +659,9 @@ export const storeCalendarIntegrations = pgTable(
     syncPendingReservations: boolean('sync_pending_reservations')
       .default(true)
       .notNull(),
-    cancelledReservationBehavior: pgEnum('cancelled_reservation_behavior', [
-      'show',
-      'hide',
-    ])('cancelled_reservation_behavior')
+    cancelledReservationBehavior: cancelledReservationBehavior(
+      'cancelled_reservation_behavior',
+    )
       .default('show')
       .notNull(),
     backfillMonths: integer('backfill_months').default(12).notNull(),
@@ -662,7 +687,7 @@ export const storeTulipIntegrations = pgTable(
     integrationId: varchar('integration_id', { length: 21 }).notNull(),
     renterUid: varchar('renter_uid', { length: 120 }),
     archivedRenterUid: varchar('archived_renter_uid', { length: 120 }),
-    publicMode: pgEnum('public_mode', ['required', 'optional', 'no_public'])('public_mode')
+    publicMode: publicMode('public_mode')
       .default('optional')
       .notNull(),
     connectedAt: timestamp('connected_at', { mode: 'date' }),
@@ -690,7 +715,7 @@ export const reservationCalendarEvents = pgTable(
     integrationId: varchar('integration_id', { length: 21 }).notNull(),
     providerEventId: varchar('provider_event_id', { length: 255 }),
     payloadHash: varchar('payload_hash', { length: 64 }),
-    syncStatus: pgEnum('sync_status', ['pending', 'synced', 'failed'])('sync_status')
+    syncStatus: syncStatus('sync_status')
       .default('pending')
       .notNull(),
     attemptCount: integer('attempt_count').default(0).notNull(),
@@ -1626,6 +1651,17 @@ export const googlePlacesCache = pgTable(
 // Payment Requests
 // ============================================================================
 
+export const paymentRequestType = pgEnum('payment_request_type', [
+  'rental',
+  'custom',
+]);
+
+export const paymentRequestStatus = pgEnum('payment_request_status', [
+  'pending',
+  'completed',
+  'cancelled',
+]);
+
 export const paymentRequests = pgTable(
   'payment_requests',
   {
@@ -1636,8 +1672,8 @@ export const paymentRequests = pgTable(
     amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
     description: varchar('description', { length: 255 }).notNull(),
-    type: pgEnum('payment_request_type', ['rental', 'custom'])('type').notNull(),
-    status: pgEnum('payment_request_status', ['pending', 'completed', 'cancelled'])('status')
+    type: paymentRequestType('type').notNull(),
+    status: paymentRequestStatus('status')
       .notNull()
       .default('pending'),
     expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
@@ -3101,6 +3137,13 @@ export const pushSubscriptionsRelations = relations(
 // AI Chat
 // ============================================================================
 
+export const aiChatMessageRole = pgEnum('ai_chat_message_role', [
+  'user',
+  'assistant',
+  'system',
+  'tool',
+]);
+
 export const aiChats = pgTable(
   'ai_chats',
   {
@@ -3124,7 +3167,7 @@ export const aiChatMessages = pgTable(
   {
     id: id(),
     chatId: varchar('chat_id', { length: 21 }).notNull(),
-    role: pgEnum('ai_chat_message_role', ['user', 'assistant', 'system', 'tool'])('role').notNull(),
+    role: aiChatMessageRole('role').notNull(),
     content: text('content'),
     toolInvocations: jsonb('tool_invocations').$type<unknown[]>(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
