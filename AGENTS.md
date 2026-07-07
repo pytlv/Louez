@@ -4,6 +4,41 @@ Turborepo + pnpm monorepo. All conventions live in `docs/` — read them before 
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the stack, core principles, and framework decision tree.
 
+## Language policy
+
+For now, do not write new French copy, comments, documentation, commit messages, summaries, or UI text in this project.
+
+Use English for new or modified project content unless the user explicitly requests French for that specific task.
+
+Do not translate or delete existing French content unless explicitly asked.
+
+## Commit message convention
+
+When suggesting or creating commit messages, use Conventional Commits v1.0.0:
+https://www.conventionalcommits.org/en/v1.0.0/
+
+Use this format:
+
+```text
+<type>[optional scope]: <description>
+```
+
+Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`.
+
+Rules:
+
+- Use lowercase commit types.
+- Use a short, clear, imperative description, for example `add`, `fix`, `update`, or `remove`.
+- Do not end the description with a period.
+- Prefer a meaningful scope when it helps, such as `inventory`, `taxonomy`, `settings`, `db`, `ui`, `api`, or `docs`.
+- Use `feat` for new user-visible functionality.
+- Use `fix` for bug fixes.
+- Use `docs` for documentation-only changes.
+- Use `chore` for maintenance changes that do not affect application behavior.
+- Use `refactor` only when behavior does not change.
+- Do not auto-commit unless explicitly asked.
+- Before suggesting a commit, summarize the changed files and the proposed commit message.
+
 ## Step 1 — Classify the task
 
 Before writing any code, classify what you are about to do:
