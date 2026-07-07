@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/mysql2'
-import mysql from 'mysql2/promise'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 import * as schema from './schema'
 import { env } from './env'
 
@@ -8,26 +8,23 @@ const connectionString = env.DATABASE_URL
 // Singleton pattern to prevent connection pool exhaustion in development
 // Next.js hot reload creates new module instances, each creating a new pool
 const globalForDb = globalThis as unknown as {
-  pool: mysql.Pool | undefined
+  client: postgres.Sql | undefined
 }
 
-const pool =
-  globalForDb.pool ??
-  mysql.createPool({
-    uri: connectionString,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0,
+const client =
+  globalForDb.client ??
+  postgres(connectionString, {
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 10,
   })
 
-// In development, cache the pool to avoid "Too many connections" errors
+// In development, cache the client to avoid connection churn during hot reload.
 if (env.NODE_ENV !== 'production') {
-  globalForDb.pool = pool
+  globalForDb.client = client
 }
 
-export const db = drizzle(pool, { schema, mode: 'default' })
+export const db = drizzle(client, { schema })
 
 export type Database = typeof db
 

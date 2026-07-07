@@ -1457,7 +1457,7 @@ export async function createReservation(input: CreateReservationInput) {
             postalCode: input.customer.postalCode || null,
             country: store.settings?.country || 'FR',
           })
-          .$returningId();
+          .returning({ id: customers.id });
 
         customer = await tx.query.customers.findFirst({
           where: eq(customers.id, newCustomer.id),

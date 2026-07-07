@@ -126,7 +126,7 @@ export async function POST(req: Request) {
         userId: session.user.id,
         title,
       })
-      .$returningId()
+      .returning({ id: aiChats.id })
 
     activeChatId = created.id
 

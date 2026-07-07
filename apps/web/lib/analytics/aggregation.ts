@@ -114,7 +114,8 @@ export async function aggregateDailyAnalytics() {
           tabletVisitors: Number(pvStats?.tabletVisitors) || 0,
           desktopVisitors: Number(pvStats?.desktopVisitors) || 0,
         })
-        .onDuplicateKeyUpdate({
+        .onConflictDoUpdate({
+          target: [dailyStats.storeId, dailyStats.date],
           set: {
             pageViews: Number(pvStats?.totalViews) || 0,
             uniqueVisitors: Number(pvStats?.uniqueVisitors) || 0,
@@ -167,7 +168,7 @@ export async function aggregateDailyAnalytics() {
               eq(storefrontEvents.eventType, 'add_to_cart'),
               gte(storefrontEvents.createdAt, yesterday),
               lt(storefrontEvents.createdAt, today),
-              sql`JSON_EXTRACT(${storefrontEvents.metadata}, '$.productId') = ${product.productId}`
+              sql`${storefrontEvents.metadata}->>'productId' = ${product.productId}`
             )
           )
 
@@ -183,7 +184,8 @@ export async function aggregateDailyAnalytics() {
             reservations: 0, // This would require joining with reservation_items
             revenue: '0',
           })
-          .onDuplicateKeyUpdate({
+          .onConflictDoUpdate({
+            target: [productStats.storeId, productStats.productId, productStats.date],
             set: {
               views: product.views,
               cartAdditions: productCartStats[0]?.cartAdditions || 0,

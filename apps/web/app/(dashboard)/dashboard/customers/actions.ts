@@ -43,7 +43,7 @@ export async function createCustomer(data: CustomerInput) {
         storeId: store.id,
         ...validated,
       })
-      .$returningId()
+      .returning({ id: customers.id })
 
     notifyCustomerCreated(
       { id: store.id, name: store.name, slug: store.slug },

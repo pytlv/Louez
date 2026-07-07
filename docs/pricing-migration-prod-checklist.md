@@ -74,7 +74,7 @@ Note: warnings = tarifs non strictement progressifs (signal UX/business), pas bl
 Commande exécutée (avec dépendances embarquées en `dlx`):
 
 ```bash
-pnpm dlx --package=drizzle-kit --package=drizzle-orm --package=mysql2 drizzle-kit migrate --config drizzle.config.ts
+pnpm dlx --package=drizzle-kit --package=drizzle-orm --package=postgres drizzle-kit migrate --config drizzle.config.ts
 ```
 
 Résultat:

@@ -446,7 +446,7 @@ export async function createStore(data: StoreInfoInput) {
           currency: validated.data.currency,
         },
       })
-      .$returningId();
+      .returning({ id: stores.id });
 
     // Create owner membership
     await db.insert(storeMembers).values({

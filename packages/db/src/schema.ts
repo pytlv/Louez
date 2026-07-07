@@ -2,19 +2,18 @@ import { relations } from 'drizzle-orm';
 import {
   boolean,
   date,
-  decimal,
+  numeric,
   foreignKey,
   index,
-  int,
-  json,
-  longtext,
-  mysqlEnum,
-  mysqlTable,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
   text,
   timestamp,
   unique,
   varchar,
-} from 'drizzle-orm/mysql-core';
+} from 'drizzle-orm/pg-core';
 import { nanoid } from 'nanoid';
 
 import type {
@@ -45,7 +44,7 @@ const id = () =>
 // Better Auth Tables
 // ============================================================================
 
-export const users = mysqlTable('users', {
+export const users = pgTable('users', {
   id: id(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 255 }),
@@ -62,7 +61,7 @@ export const users = mysqlTable('users', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
-export const accounts = mysqlTable(
+export const accounts = pgTable(
   'accounts',
   {
     id: id(),
@@ -92,7 +91,7 @@ export const accounts = mysqlTable(
   }),
 );
 
-export const sessions = mysqlTable(
+export const sessions = pgTable(
   'sessions',
   {
     id: id(),
@@ -110,7 +109,7 @@ export const sessions = mysqlTable(
   }),
 );
 
-export const verification = mysqlTable('verification', {
+export const verification = pgTable('verification', {
   id: id(),
   identifier: varchar('identifier', { length: 255 }).notNull(),
   value: varchar('value', { length: 255 }).notNull(),
@@ -123,14 +122,14 @@ export const verification = mysqlTable('verification', {
 // Subscriptions (simplified - plans defined in code)
 // ============================================================================
 
-export const subscriptionStatus = mysqlEnum('subscription_status', [
+export const subscriptionStatus = pgEnum('subscription_status', [
   'active',
   'cancelled',
   'past_due',
   'trialing',
 ]);
 
-export const subscriptions = mysqlTable(
+export const subscriptions = pgTable(
   'subscriptions',
   {
     id: id(),
@@ -146,22 +145,22 @@ export const subscriptions = mysqlTable(
     // When 'pay_as_you_go', `planSlug` is ignored for limits and the store is
     // billed per rental (see platform_fee / pay_as_you_go_invoices). New stores
     // default to pay-as-you-go.
-    billingMode: mysqlEnum('billing_mode', ['subscription', 'pay_as_you_go'])
+    billingMode: pgEnum('billing_mode', ['subscription', 'pay_as_you_go'])('billing_mode')
       .default('pay_as_you_go')
       .notNull(),
 
     // Per-store pay-as-you-go pricing override. null => platform default ladder.
-    payAsYouGoConfig: json('pay_as_you_go_config').$type<PayAsYouGoConfig>(),
+    payAsYouGoConfig: jsonb('pay_as_you_go_config').$type<PayAsYouGoConfig>(),
 
     // Welcome allowance: number of free reservations granted at account creation. While
     // unused credits remain, a rental's pay-as-you-go commission is waived. Editable per
     // store in admin. Usage is derived from the ledger (reservation fees with source 'free').
-    freeReservationsGranted: int('free_reservations_granted')
+    freeReservationsGranted: integer('free_reservations_granted')
       .notNull()
       .default(0),
 
     // Status
-    status: subscriptionStatus.default('active').notNull(),
+    status: subscriptionStatus('status').default('active').notNull(),
 
     // Stripe (optional - only if Stripe is configured)
     stripeSubscriptionId: varchar('stripe_subscription_id', {
@@ -194,13 +193,13 @@ export const subscriptions = mysqlTable(
 // Platform fee ledger & pay-as-you-go invoicing
 // ============================================================================
 
-export const platformFeeSource = mysqlEnum('platform_fee_source', [
+export const platformFeeSource = pgEnum('platform_fee_source', [
   'online', // collected at source via the Stripe application fee
   'manual', // reservation fee accrued for the month-end invoice (no Stripe)
   'free', // waived by the store's free-reservation welcome allowance (amount 0)
 ]);
 
-export const platformFeeStatus = mysqlEnum('platform_fee_status', [
+export const platformFeeStatus = pgEnum('platform_fee_status', [
   'pending', // manual reservation fee awaiting the month-end invoice
   'collected', // collected at source via the application fee (or settled free row)
   'billed', // included in a paid/sent month-end invoice
@@ -212,7 +211,7 @@ export const platformFeeStatus = mysqlEnum('platform_fee_status', [
  * Ledger of pay-as-you-go reservation commissions the application collected (or will
  * collect). One row per reservation, idempotent via `dedupKey` (`res:<reservationId>`).
  */
-export const platformFees = mysqlTable(
+export const platformFees = pgTable(
   'platform_fee',
   {
     id: id(),
@@ -224,21 +223,21 @@ export const platformFees = mysqlTable(
     // Idempotency key: `res:<reservationId>` (one row per reservation).
     dedupKey: varchar('dedup_key', { length: 80 }).notNull().unique(),
 
-    amountCents: int('amount_cents').notNull(),
+    amountCents: integer('amount_cents').notNull(),
     // How much of `amountCents` has been reversed (refunds/disputes). When it reaches
     // `amountCents` the row is marked `reversed`. Supports partial refunds.
-    amountReversedCents: int('amount_reversed_cents').notNull().default(0),
+    amountReversedCents: integer('amount_reversed_cents').notNull().default(0),
     currency: varchar('currency', { length: 3 }).notNull().default('eur'),
 
-    source: platformFeeSource.notNull(),
-    status: platformFeeStatus.notNull(),
+    source: platformFeeSource('source').notNull(),
+    status: platformFeeStatus('status').notNull(),
 
     // YYYY-MM the fee is billed in (set when first recorded).
     billingMonth: varchar('billing_month', { length: 7 }).notNull(),
     // 1-based monthly position of a reservation fee, assigned at record time and used
     // to pick the graduated band. The stored `amountCents` is the authoritative,
     // immutable price for the rental (never recomputed from the current config).
-    monthlyIndex: int('monthly_index'),
+    monthlyIndex: integer('monthly_index'),
 
     // Stripe references (for source-collection + reversal on refund).
     stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
@@ -272,7 +271,7 @@ export const platformFees = mysqlTable(
   }),
 );
 
-export const payAsYouGoInvoiceStatus = mysqlEnum('payg_invoice_status', [
+export const payAsYouGoInvoiceStatus = pgEnum('payg_invoice_status', [
   'draft',
   'open', // sent / awaiting payment
   'paid',
@@ -285,22 +284,22 @@ export const payAsYouGoInvoiceStatus = mysqlEnum('payg_invoice_status', [
  * Covers the rentals NOT already collected at source. Unique by (store, month)
  * so the billing cron is idempotent.
  */
-export const payAsYouGoInvoices = mysqlTable(
+export const payAsYouGoInvoices = pgTable(
   'pay_as_you_go_invoices',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     billingMonth: varchar('billing_month', { length: 7 }).notNull(),
 
-    locationCount: int('location_count').notNull().default(0),
-    grossAmountCents: int('gross_amount_cents').notNull().default(0), // T(N)
-    collectedAtSourceCents: int('collected_at_source_cents')
+    locationCount: integer('location_count').notNull().default(0),
+    grossAmountCents: integer('gross_amount_cents').notNull().default(0), // T(N)
+    collectedAtSourceCents: integer('collected_at_source_cents')
       .notNull()
       .default(0), // C
-    invoicedAmountCents: int('invoiced_amount_cents').notNull().default(0), // T - C
+    invoicedAmountCents: integer('invoiced_amount_cents').notNull().default(0), // T - C
     currency: varchar('currency', { length: 3 }).notNull().default('eur'),
 
-    status: payAsYouGoInvoiceStatus.default('draft').notNull(),
+    status: payAsYouGoInvoiceStatus('status').default('draft').notNull(),
 
     stripeInvoiceId: varchar('stripe_invoice_id', { length: 255 }),
     stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
@@ -321,12 +320,12 @@ export const payAsYouGoInvoices = mysqlTable(
   }),
 );
 
-export const referralRewardKind = mysqlEnum('referral_reward_kind', [
+export const referralRewardKind = pgEnum('referral_reward_kind', [
   'free_reservations', // pay-as-you-go referrer: granted as freeReservationsGranted
   'invoice_credit', // subscribed referrer: granted as a negative Stripe invoice item
 ]);
 
-export const referralRewardStatus = mysqlEnum('referral_reward_status', [
+export const referralRewardStatus = pgEnum('referral_reward_status', [
   'granted',
   'clawed_back', // qualifying payment refunded/disputed within the clawback window
 ]);
@@ -337,7 +336,7 @@ export const referralRewardStatus = mysqlEnum('referral_reward_status', [
  * Idempotent via the UNIQUE `referred_store_id` (a referral pays out at most once).
  * Carries the Stripe payment references so a refund/dispute can claw the reward back.
  */
-export const referralRewards = mysqlTable(
+export const referralRewards = pgTable(
   'referral_rewards',
   {
     id: id(),
@@ -355,7 +354,7 @@ export const referralRewards = mysqlTable(
       length: 21,
     }),
     qualifyingPaymentId: varchar('qualifying_payment_id', { length: 21 }),
-    qualifyingAmountCents: int('qualifying_amount_cents').notNull(),
+    qualifyingAmountCents: integer('qualifying_amount_cents').notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('eur'),
 
     // Stripe references for clawback lookup (refund keys on charge, dispute on PI).
@@ -364,16 +363,16 @@ export const referralRewards = mysqlTable(
     // The negative invoice item created for an invoice_credit reward (clawback target).
     stripeInvoiceItemId: varchar('stripe_invoice_item_id', { length: 255 }),
 
-    kind: referralRewardKind.notNull(),
+    kind: referralRewardKind('kind').notNull(),
     // Free reservations granted (kind='free_reservations'); 0 otherwise.
-    freeReservations: int('free_reservations').notNull().default(0),
+    freeReservations: integer('free_reservations').notNull().default(0),
     // Euro invoice credit in cents (kind='invoice_credit'); 0 otherwise.
-    creditCents: int('credit_cents').notNull().default(0),
+    creditCents: integer('credit_cents').notNull().default(0),
 
     // YYYY-MM the reward was granted in (drives the per-referrer monthly cap).
     grantedMonth: varchar('granted_month', { length: 7 }).notNull(),
 
-    status: referralRewardStatus.notNull().default('granted'),
+    status: referralRewardStatus('status').notNull().default('granted'),
 
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     clawedBackAt: timestamp('clawed_back_at', { mode: 'date' }),
@@ -397,15 +396,15 @@ export const referralRewards = mysqlTable(
 // Store Members (Multi-store support)
 // ============================================================================
 
-export const memberRole = mysqlEnum('member_role', ['owner', 'member']);
+export const memberRole = pgEnum('member_role', ['owner', 'member']);
 
-export const storeMembers = mysqlTable(
+export const storeMembers = pgTable(
   'store_members',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     userId: varchar('user_id', { length: 21 }).notNull(),
-    role: memberRole.default('member').notNull(),
+    role: memberRole('role').default('member').notNull(),
     addedBy: varchar('added_by', { length: 21 }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
@@ -420,22 +419,22 @@ export const storeMembers = mysqlTable(
   }),
 );
 
-export const invitationStatus = mysqlEnum('invitation_status', [
+export const invitationStatus = pgEnum('invitation_status', [
   'pending',
   'accepted',
   'expired',
   'cancelled',
 ]);
 
-export const storeInvitations = mysqlTable(
+export const storeInvitations = pgTable(
   'store_invitations',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     email: varchar('email', { length: 255 }).notNull(),
-    role: memberRole.default('member').notNull(),
+    role: memberRole('role').default('member').notNull(),
     token: varchar('token', { length: 64 }).notNull().unique(),
-    status: invitationStatus.default('pending').notNull(),
+    status: invitationStatus('status').default('pending').notNull(),
     invitedBy: varchar('invited_by', { length: 21 }).notNull(),
     expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
     acceptedAt: timestamp('accepted_at', { mode: 'date' }),
@@ -452,7 +451,7 @@ export const storeInvitations = mysqlTable(
 // Core Tables
 // ============================================================================
 
-export const stores = mysqlTable(
+export const stores = pgTable(
   'stores',
   {
     id: id(),
@@ -467,15 +466,15 @@ export const stores = mysqlTable(
     email: varchar('email', { length: 255 }),
     phone: varchar('phone', { length: 50 }),
     address: text('address'),
-    latitude: decimal('latitude', { precision: 10, scale: 7 }),
-    longitude: decimal('longitude', { precision: 10, scale: 7 }),
+    latitude: numeric('latitude', { precision: 10, scale: 7 }),
+    longitude: numeric('longitude', { precision: 10, scale: 7 }),
 
     // Branding
-    logoUrl: longtext('logo_url'),
-    darkLogoUrl: longtext('dark_logo_url'),
+    logoUrl: text('logo_url'),
+    darkLogoUrl: text('dark_logo_url'),
 
     // Configuration
-    settings: json('settings').$type<StoreSettings>().default({
+    settings: jsonb('settings').$type<StoreSettings>().default({
       reservationMode: 'payment',
       minRentalMinutes: 60,
       maxRentalMinutes: null,
@@ -484,7 +483,7 @@ export const stores = mysqlTable(
     }),
 
     // Theme
-    theme: json('theme').$type<StoreTheme>().default({
+    theme: jsonb('theme').$type<StoreTheme>().default({
       mode: 'light',
       primaryColor: '#0066FF',
     }),
@@ -504,7 +503,7 @@ export const stores = mysqlTable(
     stripeChargesEnabled: boolean('stripe_charges_enabled').default(false),
 
     // Email settings
-    emailSettings: json('email_settings').$type<EmailSettings>().default({
+    emailSettings: jsonb('email_settings').$type<EmailSettings>().default({
       confirmationEnabled: true,
       reminderPickupEnabled: true,
       reminderReturnEnabled: true,
@@ -512,19 +511,19 @@ export const stores = mysqlTable(
     }),
 
     // Review Booster settings
-    reviewBoosterSettings: json(
+    reviewBoosterSettings: jsonb(
       'review_booster_settings',
     ).$type<ReviewBoosterSettings>(),
 
     // Notification settings (admin notifications)
-    notificationSettings: json(
+    notificationSettings: jsonb(
       'notification_settings',
     ).$type<NotificationSettings>(),
     discordWebhookUrl: varchar('discord_webhook_url', { length: 500 }),
     ownerPhone: varchar('owner_phone', { length: 20 }),
 
     // Customer notification settings (notifications sent to customers)
-    customerNotificationSettings: json(
+    customerNotificationSettings: jsonb(
       'customer_notification_settings',
     ).$type<CustomerNotificationSettings>(),
 
@@ -537,11 +536,11 @@ export const stores = mysqlTable(
     referredByStoreId: varchar('referred_by_store_id', { length: 21 }),
 
     // Trial period (platform admin only)
-    trialDays: int('trial_days').default(0).notNull(),
+    trialDays: integer('trial_days').default(0).notNull(),
 
     // Subscription discount (platform admin only)
-    discountPercent: int('discount_percent').default(0).notNull(),
-    discountDurationMonths: int('discount_duration_months')
+    discountPercent: integer('discount_percent').default(0).notNull(),
+    discountDurationMonths: integer('discount_duration_months')
       .default(0)
       .notNull(),
     stripeCouponId: varchar('stripe_coupon_id', { length: 255 }),
@@ -562,7 +561,7 @@ export const stores = mysqlTable(
 // Integrations
 // ============================================================================
 
-export const storeIntegrations = mysqlTable(
+export const storeIntegrations = pgTable(
   'store_integrations',
   {
     id: id(),
@@ -572,13 +571,13 @@ export const storeIntegrations = mysqlTable(
     enabled: boolean('enabled').default(false).notNull(),
     connectedByUserId: varchar('connected_by_user_id', { length: 21 }),
     providerAccountEmail: varchar('provider_account_email', { length: 255 }),
-    status: mysqlEnum('status', [
+    status: pgEnum('store_integration_status', [
       'disabled',
       'active',
       'needs_reconnect',
       'error',
       'syncing',
-    ])
+    ])('status')
       .default('disabled')
       .notNull(),
     lastHealthCheckAt: timestamp('last_health_check_at', { mode: 'date' }),
@@ -598,19 +597,19 @@ export const storeIntegrations = mysqlTable(
   }),
 );
 
-export const integrationCredentials = mysqlTable(
+export const integrationCredentials = pgTable(
   'integration_credentials',
   {
     id: id(),
     integrationId: varchar('integration_id', { length: 21 }).notNull(),
-    credentialKind: mysqlEnum('credential_kind', ['oauth', 'api_key'])
+    credentialKind: pgEnum('credential_kind', ['oauth', 'api_key'])('credential_kind')
       .default('oauth')
       .notNull(),
     accessTokenEncrypted: text('access_token_encrypted'),
     refreshTokenEncrypted: text('refresh_token_encrypted'),
     expiresAt: timestamp('expires_at', { mode: 'date' }),
     scopes: text('scopes'),
-    keyVersion: int('key_version').default(1).notNull(),
+    keyVersion: integer('key_version').default(1).notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -624,7 +623,7 @@ export const integrationCredentials = mysqlTable(
   }),
 );
 
-export const storeCalendarIntegrations = mysqlTable(
+export const storeCalendarIntegrations = pgTable(
   'store_calendar_integrations',
   {
     id: id(),
@@ -634,14 +633,14 @@ export const storeCalendarIntegrations = mysqlTable(
     syncPendingReservations: boolean('sync_pending_reservations')
       .default(true)
       .notNull(),
-    cancelledReservationBehavior: mysqlEnum('cancelled_reservation_behavior', [
+    cancelledReservationBehavior: pgEnum('cancelled_reservation_behavior', [
       'show',
       'hide',
-    ])
+    ])('cancelled_reservation_behavior')
       .default('show')
       .notNull(),
-    backfillMonths: int('backfill_months').default(12).notNull(),
-    backfillPastDays: int('backfill_past_days').default(30).notNull(),
+    backfillMonths: integer('backfill_months').default(12).notNull(),
+    backfillPastDays: integer('backfill_past_days').default(30).notNull(),
     lastSyncAt: timestamp('last_sync_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
@@ -656,14 +655,14 @@ export const storeCalendarIntegrations = mysqlTable(
   }),
 );
 
-export const storeTulipIntegrations = mysqlTable(
+export const storeTulipIntegrations = pgTable(
   'store_tulip_integrations',
   {
     id: id(),
     integrationId: varchar('integration_id', { length: 21 }).notNull(),
     renterUid: varchar('renter_uid', { length: 120 }),
     archivedRenterUid: varchar('archived_renter_uid', { length: 120 }),
-    publicMode: mysqlEnum('public_mode', ['required', 'optional', 'no_public'])
+    publicMode: pgEnum('public_mode', ['required', 'optional', 'no_public'])('public_mode')
       .default('optional')
       .notNull(),
     connectedAt: timestamp('connected_at', { mode: 'date' }),
@@ -683,7 +682,7 @@ export const storeTulipIntegrations = mysqlTable(
   }),
 );
 
-export const reservationCalendarEvents = mysqlTable(
+export const reservationCalendarEvents = pgTable(
   'reservation_calendar_events',
   {
     id: id(),
@@ -691,10 +690,10 @@ export const reservationCalendarEvents = mysqlTable(
     integrationId: varchar('integration_id', { length: 21 }).notNull(),
     providerEventId: varchar('provider_event_id', { length: 255 }),
     payloadHash: varchar('payload_hash', { length: 64 }),
-    syncStatus: mysqlEnum('sync_status', ['pending', 'synced', 'failed'])
+    syncStatus: pgEnum('sync_status', ['pending', 'synced', 'failed'])('sync_status')
       .default('pending')
       .notNull(),
-    attemptCount: int('attempt_count').default(0).notNull(),
+    attemptCount: integer('attempt_count').default(0).notNull(),
     nextAttemptAt: timestamp('next_attempt_at', { mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -720,7 +719,7 @@ export const reservationCalendarEvents = mysqlTable(
   }),
 );
 
-export const storeLocations = mysqlTable(
+export const storeLocations = pgTable(
   'store_locations',
   {
     id: id(),
@@ -732,8 +731,8 @@ export const storeLocations = mysqlTable(
     city: varchar('city', { length: 255 }),
     postalCode: varchar('postal_code', { length: 20 }),
     country: varchar('country', { length: 2 }).default('FR'),
-    latitude: decimal('latitude', { precision: 10, scale: 7 }),
-    longitude: decimal('longitude', { precision: 10, scale: 7 }),
+    latitude: numeric('latitude', { precision: 10, scale: 7 }),
+    longitude: numeric('longitude', { precision: 10, scale: 7 }),
     isActive: boolean('is_active').default(true).notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
@@ -747,7 +746,7 @@ export const storeLocations = mysqlTable(
   }),
 );
 
-export const categories = mysqlTable(
+export const categories = pgTable(
   'categories',
   {
     id: id(),
@@ -755,7 +754,7 @@ export const categories = mysqlTable(
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     imageUrl: text('image_url'),
-    order: int('order').default(0),
+    order: integer('order').default(0),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -764,18 +763,18 @@ export const categories = mysqlTable(
   }),
 );
 
-export const productStatus = mysqlEnum('product_status', [
+export const productStatus = pgEnum('product_status', [
   'draft',
   'active',
   'archived',
 ]);
-export const pricingModeEnum = mysqlEnum('pricing_mode', [
+export const pricingModeEnum = pgEnum('pricing_mode', [
   'hour',
   'day',
   'week',
 ]);
 
-export const products = mysqlTable(
+export const products = pgTable(
   'products',
   {
     id: id(),
@@ -787,21 +786,21 @@ export const products = mysqlTable(
     description: text('description'),
 
     // Images (array of URLs)
-    images: json('images').$type<string[]>().default([]),
+    images: jsonb('images').$type<string[]>().default([]),
 
     // Pricing
-    price: decimal('price', { precision: 10, scale: 2 }).notNull(),
-    deposit: decimal('deposit', { precision: 10, scale: 2 }).default('0'),
-    basePeriodMinutes: int('base_period_minutes'),
+    price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+    deposit: numeric('deposit', { precision: 10, scale: 2 }).default('0'),
+    basePeriodMinutes: integer('base_period_minutes'),
 
     // Product pricing mode
-    pricingMode: pricingModeEnum.notNull(),
+    pricingMode: pricingModeEnum('pricing_mode').notNull(),
 
     // Video URL (YouTube)
     videoUrl: text('video_url'),
 
     // Tax settings (product-specific)
-    taxSettings: json('tax_settings').$type<ProductTaxSettings>(),
+    taxSettings: jsonb('tax_settings').$type<ProductTaxSettings>(),
 
     // Pricing tier enforcement: when true, customers can only book
     // for the exact durations defined by pricing tiers (package pricing)
@@ -810,7 +809,7 @@ export const products = mysqlTable(
       .default(false),
 
     // Stock
-    quantity: int('quantity').notNull().default(1),
+    quantity: integer('quantity').notNull().default(1),
 
     // Unit tracking: when true, individual units can be registered with identifiers
     // and assigned to reservations to track exactly which units are rented out
@@ -818,15 +817,15 @@ export const products = mysqlTable(
 
     // Booking attributes (advanced mode with trackUnits=true)
     // Example: [{ key: 'size', label: 'Size', position: 0 }, ...]
-    bookingAttributeAxes: json('booking_attribute_axes').$type<
+    bookingAttributeAxes: jsonb('booking_attribute_axes').$type<
       BookingAttributeAxis[]
     >(),
 
     // Display order (for manual sorting)
-    displayOrder: int('display_order').default(0),
+    displayOrder: integer('display_order').default(0),
 
     // Status
-    status: productStatus.default('active'),
+    status: productStatus('status').default('active'),
 
     // Metadata
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -849,22 +848,22 @@ export const products = mysqlTable(
 // Product Pricing Tiers (Tiered/Progressive Pricing)
 // ============================================================================
 
-export const productPricingTiers = mysqlTable(
+export const productPricingTiers = pgTable(
   'product_pricing_tiers',
   {
     id: id(),
     productId: varchar('product_id', { length: 21 }).notNull(),
 
     // Threshold
-    minDuration: int('min_duration'),
-    period: int('period'),
+    minDuration: integer('min_duration'),
+    period: integer('period'),
 
     // Discount
-    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }),
-    price: decimal('price', { precision: 10, scale: 2 }),
+    discountPercent: numeric('discount_percent', { precision: 10, scale: 6 }),
+    price: numeric('price', { precision: 10, scale: 2 }),
 
     // Display order
-    displayOrder: int('display_order').default(0),
+    displayOrder: integer('display_order').default(0),
 
     // Metadata
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -887,7 +886,7 @@ export const productPricingTiers = mysqlTable(
 // Product Seasonal Pricing
 // ============================================================================
 
-export const productSeasonalPricing = mysqlTable(
+export const productSeasonalPricing = pgTable(
   'product_seasonal_pricing',
   {
     id: id(),
@@ -895,7 +894,7 @@ export const productSeasonalPricing = mysqlTable(
     name: varchar('name', { length: 100 }).notNull(),
     startDate: date('start_date', { mode: 'string' }).notNull(),
     endDate: date('end_date', { mode: 'string' }).notNull(),
-    price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+    price: numeric('price', { precision: 10, scale: 2 }).notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -911,22 +910,22 @@ export const productSeasonalPricing = mysqlTable(
   }),
 );
 
-export const productSeasonalPricingTiers = mysqlTable(
+export const productSeasonalPricingTiers = pgTable(
   'product_seasonal_pricing_tiers',
   {
     id: id(),
     seasonalPricingId: varchar('seasonal_pricing_id', { length: 21 }).notNull(),
 
     // Threshold (same structure as productPricingTiers)
-    minDuration: int('min_duration'),
-    period: int('period'),
+    minDuration: integer('min_duration'),
+    period: integer('period'),
 
     // Discount
-    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }),
-    price: decimal('price', { precision: 10, scale: 2 }),
+    discountPercent: numeric('discount_percent', { precision: 10, scale: 6 }),
+    price: numeric('price', { precision: 10, scale: 2 }),
 
     // Display order
-    displayOrder: int('display_order').default(0),
+    displayOrder: integer('display_order').default(0),
 
     // Metadata
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -939,19 +938,19 @@ export const productSeasonalPricingTiers = mysqlTable(
   }),
 );
 
-export const customerType = mysqlEnum('customer_type', [
+export const customerType = pgEnum('customer_type', [
   'individual',
   'business',
 ]);
 
-export const customers = mysqlTable(
+export const customers = pgTable(
   'customers',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
 
     // Customer type (individual or business)
-    customerType: customerType.default('individual').notNull(),
+    customerType: customerType('customer_type').default('individual').notNull(),
 
     // Identity
     email: varchar('email', { length: 255 }).notNull(),
@@ -985,7 +984,7 @@ export const customers = mysqlTable(
   }),
 );
 
-export const customerSessions = mysqlTable('customer_sessions', {
+export const customerSessions = pgTable('customer_sessions', {
   id: id(),
   customerId: varchar('customer_id', { length: 21 }).notNull(),
   token: varchar('token', { length: 255 }).notNull().unique(),
@@ -993,7 +992,7 @@ export const customerSessions = mysqlTable('customer_sessions', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
-export const verificationCodes = mysqlTable('verification_codes', {
+export const verificationCodes = pgTable('verification_codes', {
   id: id(),
   email: varchar('email', { length: 255 }).notNull(),
   storeId: varchar('store_id', { length: 21 }).notNull(),
@@ -1006,7 +1005,7 @@ export const verificationCodes = mysqlTable('verification_codes', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
-export const reservationStatus = mysqlEnum('reservation_status', [
+export const reservationStatus = pgEnum('reservation_status', [
   'pending',
   'confirmed',
   'ongoing',
@@ -1017,7 +1016,7 @@ export const reservationStatus = mysqlEnum('reservation_status', [
   'declined',
 ]);
 
-export const depositStatus = mysqlEnum('deposit_status', [
+export const depositStatus = pgEnum('deposit_status', [
   'none', // No deposit required
   'pending', // Awaiting card to be saved
   'card_saved', // Card saved, hold not yet created
@@ -1027,7 +1026,7 @@ export const depositStatus = mysqlEnum('deposit_status', [
   'failed', // Authorization failed
 ]);
 
-export const reservations = mysqlTable(
+export const reservations = pgTable(
   'reservations',
   {
     id: id(),
@@ -1038,34 +1037,34 @@ export const reservations = mysqlTable(
     number: varchar('number', { length: 50 }).notNull(),
 
     // Status
-    status: reservationStatus.default('pending').notNull(),
+    status: reservationStatus('status').default('pending').notNull(),
 
     // Dates
     startDate: timestamp('start_date', { mode: 'date' }).notNull(),
     endDate: timestamp('end_date', { mode: 'date' }).notNull(),
 
     // Amounts
-    subtotalAmount: decimal('subtotal_amount', {
+    subtotalAmount: numeric('subtotal_amount', {
       precision: 10,
       scale: 2,
     }).notNull(),
-    depositAmount: decimal('deposit_amount', {
+    depositAmount: numeric('deposit_amount', {
       precision: 10,
       scale: 2,
     }).notNull(),
-    totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+    totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull(),
 
     // Tax amounts
-    subtotalExclTax: decimal('subtotal_excl_tax', { precision: 10, scale: 2 }),
-    taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }),
-    taxRate: decimal('tax_rate', { precision: 5, scale: 2 }),
+    subtotalExclTax: numeric('subtotal_excl_tax', { precision: 10, scale: 2 }),
+    taxAmount: numeric('tax_amount', { precision: 10, scale: 2 }),
+    taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
 
     // Signature
     signedAt: timestamp('signed_at', { mode: 'date' }),
     signatureIp: varchar('signature_ip', { length: 50 }),
 
     // Deposit (caution) management
-    depositStatus: depositStatus.default('pending'),
+    depositStatus: depositStatus('deposit_status').default('pending'),
     depositPaymentIntentId: varchar('deposit_payment_intent_id', {
       length: 255,
     }),
@@ -1098,16 +1097,16 @@ export const reservations = mysqlTable(
     deliveryCity: varchar('delivery_city', { length: 255 }),
     deliveryPostalCode: varchar('delivery_postal_code', { length: 20 }),
     deliveryCountry: varchar('delivery_country', { length: 2 }),
-    deliveryLatitude: decimal('delivery_latitude', { precision: 10, scale: 7 }),
-    deliveryLongitude: decimal('delivery_longitude', {
+    deliveryLatitude: numeric('delivery_latitude', { precision: 10, scale: 7 }),
+    deliveryLongitude: numeric('delivery_longitude', {
       precision: 10,
       scale: 7,
     }),
-    deliveryDistanceKm: decimal('delivery_distance_km', {
+    deliveryDistanceKm: numeric('delivery_distance_km', {
       precision: 8,
       scale: 2,
     }),
-    deliveryFee: decimal('delivery_fee', { precision: 10, scale: 2 }).default(
+    deliveryFee: numeric('delivery_fee', { precision: 10, scale: 2 }).default(
       '0',
     ),
 
@@ -1116,34 +1115,34 @@ export const reservations = mysqlTable(
     returnCity: varchar('return_city', { length: 255 }),
     returnPostalCode: varchar('return_postal_code', { length: 20 }),
     returnCountry: varchar('return_country', { length: 2 }),
-    returnLatitude: decimal('return_latitude', { precision: 10, scale: 7 }),
-    returnLongitude: decimal('return_longitude', { precision: 10, scale: 7 }),
-    returnDistanceKm: decimal('return_distance_km', { precision: 8, scale: 2 }),
+    returnLatitude: numeric('return_latitude', { precision: 10, scale: 7 }),
+    returnLongitude: numeric('return_longitude', { precision: 10, scale: 7 }),
+    returnDistanceKm: numeric('return_distance_km', { precision: 8, scale: 2 }),
 
     // Store pickup/return location snapshots. Null id means the store primary location.
     pickupLocationId: varchar('pickup_location_id', { length: 21 }),
     returnLocationId: varchar('return_location_id', { length: 21 }),
-    pickupLocationSnapshot: json(
+    pickupLocationSnapshot: jsonb(
       'pickup_location_snapshot',
     ).$type<ReservationLocationSnapshot>(),
-    returnLocationSnapshot: json(
+    returnLocationSnapshot: jsonb(
       'return_location_snapshot',
     ).$type<ReservationLocationSnapshot>(),
 
     // Promo code
     promoCodeId: varchar('promo_code_id', { length: 21 }),
-    discountAmount: decimal('discount_amount', {
+    discountAmount: numeric('discount_amount', {
       precision: 10,
       scale: 2,
     }).default('0'),
-    promoCodeSnapshot: json('promo_code_snapshot').$type<PromoCodeSnapshot>(),
+    promoCodeSnapshot: jsonb('promo_code_snapshot').$type<PromoCodeSnapshot>(),
 
     // Source
     source: varchar('source', { length: 20 }).default('online'),
 
     // Tulip insurance contract
     tulipInsuranceOptIn: boolean('tulip_insurance_opt_in'),
-    tulipInsuranceAmount: decimal('tulip_insurance_amount', {
+    tulipInsuranceAmount: numeric('tulip_insurance_amount', {
       precision: 10,
       scale: 2,
     }),
@@ -1166,7 +1165,7 @@ export const reservations = mysqlTable(
 // Product Tulip Mapping
 // ============================================================================
 
-export const productsTulip = mysqlTable(
+export const productsTulip = pgTable(
   'products_tulip',
   {
     id: id(),
@@ -1183,7 +1182,7 @@ export const productsTulip = mysqlTable(
   }),
 );
 
-export const reservationItems = mysqlTable(
+export const reservationItems = pgTable(
   'reservation_items',
   {
     id: id(),
@@ -1194,32 +1193,32 @@ export const reservationItems = mysqlTable(
     isCustomItem: boolean('is_custom_item').default(false).notNull(),
 
     // Quantity and price at reservation time
-    quantity: int('quantity').notNull(),
-    unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
-    depositPerUnit: decimal('deposit_per_unit', {
+    quantity: integer('quantity').notNull(),
+    unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).notNull(),
+    depositPerUnit: numeric('deposit_per_unit', {
       precision: 10,
       scale: 2,
     }).notNull(),
-    totalPrice: decimal('total_price', { precision: 10, scale: 2 }).notNull(),
+    totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
 
     // Tax fields per item
-    taxRate: decimal('tax_rate', { precision: 5, scale: 2 }),
-    taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }),
-    priceExclTax: decimal('price_excl_tax', { precision: 10, scale: 2 }),
-    totalExclTax: decimal('total_excl_tax', { precision: 10, scale: 2 }),
+    taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
+    taxAmount: numeric('tax_amount', { precision: 10, scale: 2 }),
+    priceExclTax: numeric('price_excl_tax', { precision: 10, scale: 2 }),
+    totalExclTax: numeric('total_excl_tax', { precision: 10, scale: 2 }),
 
     // Pricing breakdown for audit trail (tiered pricing details)
-    pricingBreakdown: json('pricing_breakdown').$type<PricingBreakdown>(),
+    pricingBreakdown: jsonb('pricing_breakdown').$type<PricingBreakdown>(),
 
     // Product snapshot (for history) - also used for custom item name/description
-    productSnapshot: json('product_snapshot')
+    productSnapshot: jsonb('product_snapshot')
       .$type<ProductSnapshot>()
       .notNull(),
 
     // Resolved combination key and selected attributes for tracked-unit products.
     // Null for non-tracked products and custom items.
     combinationKey: varchar('combination_key', { length: 255 }),
-    selectedAttributes: json('selected_attributes').$type<UnitAttributes>(),
+    selectedAttributes: jsonb('selected_attributes').$type<UnitAttributes>(),
 
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -1233,7 +1232,7 @@ export const reservationItems = mysqlTable(
   }),
 );
 
-export const paymentType = mysqlEnum('payment_type', [
+export const paymentType = pgEnum('payment_type', [
   'rental',
   'deposit',
   'deposit_hold', // Authorization hold (empreinte)
@@ -1243,7 +1242,7 @@ export const paymentType = mysqlEnum('payment_type', [
   'adjustment', // Price adjustment (positive or negative)
 ]);
 
-export const paymentMethod = mysqlEnum('payment_method', [
+export const paymentMethod = pgEnum('payment_method', [
   'stripe',
   'cash',
   'card',
@@ -1252,7 +1251,7 @@ export const paymentMethod = mysqlEnum('payment_method', [
   'other',
 ]);
 
-export const paymentStatus = mysqlEnum('payment_status', [
+export const paymentStatus = pgEnum('payment_status', [
   'pending',
   'authorized', // For deposit holds (requires_capture)
   'completed',
@@ -1261,19 +1260,19 @@ export const paymentStatus = mysqlEnum('payment_status', [
   'refunded',
 ]);
 
-export const payments = mysqlTable(
+export const payments = pgTable(
   'payments',
   {
     id: id(),
     reservationId: varchar('reservation_id', { length: 21 }).notNull(),
 
     // Amount
-    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+    amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
 
     // Type and method
-    type: paymentType.notNull(),
-    method: paymentMethod.notNull(),
-    status: paymentStatus.default('pending').notNull(),
+    type: paymentType('type').notNull(),
+    method: paymentMethod('method').notNull(),
+    status: paymentStatus('status').default('pending').notNull(),
 
     // Stripe (if online payment)
     stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
@@ -1288,7 +1287,7 @@ export const payments = mysqlTable(
     authorizationExpiresAt: timestamp('authorization_expires_at', {
       mode: 'date',
     }),
-    capturedAmount: decimal('captured_amount', { precision: 10, scale: 2 }),
+    capturedAmount: numeric('captured_amount', { precision: 10, scale: 2 }),
 
     // Currency (for multi-currency support)
     currency: varchar('currency', { length: 3 }).default('EUR'),
@@ -1306,13 +1305,13 @@ export const payments = mysqlTable(
   }),
 );
 
-export const documentType = mysqlEnum('document_type', ['contract', 'invoice']);
+export const documentType = pgEnum('document_type', ['contract', 'invoice']);
 
 // ============================================================================
 // Reservation Activity Log (Audit Trail)
 // ============================================================================
 
-export const activityType = mysqlEnum('activity_type', [
+export const activityType = pgEnum('activity_type', [
   'created',
   'confirmed',
   'rejected',
@@ -1343,17 +1342,17 @@ export const activityType = mysqlEnum('activity_type', [
   'quote_declined', // Customer declined a quote
 ]);
 
-export const reservationActivity = mysqlTable(
+export const reservationActivity = pgTable(
   'reservation_activity',
   {
     id: id(),
     reservationId: varchar('reservation_id', { length: 21 }).notNull(),
     userId: varchar('user_id', { length: 21 }), // null for system actions or customer actions
-    activityType: activityType.notNull(),
+    activityType: activityType('activity_type').notNull(),
 
     // Additional context
     description: text('description'), // e.g., rejection reason
-    metadata: json('metadata').$type<Record<string, unknown>>(), // For additional structured data
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(), // For additional structured data
 
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -1365,17 +1364,17 @@ export const reservationActivity = mysqlTable(
   }),
 );
 
-export const documents = mysqlTable('documents', {
+export const documents = pgTable('documents', {
   id: id(),
   reservationId: varchar('reservation_id', { length: 21 }).notNull(),
 
-  type: documentType.notNull(),
+  type: documentType('type').notNull(),
   number: varchar('number', { length: 50 }).notNull(),
 
   // File (longtext to support base64-encoded PDFs with embedded images)
-  fileUrl: longtext('file_url').notNull(),
+  fileUrl: text('file_url').notNull(),
   fileName: varchar('file_name', { length: 255 }).notNull(),
-  cgvSnapshot: longtext('cgv_snapshot'),
+  cgvSnapshot: text('cgv_snapshot'),
 
   // Metadata
   generatedAt: timestamp('generated_at', { mode: 'date' })
@@ -1384,7 +1383,7 @@ export const documents = mysqlTable('documents', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
-export const emailLogs = mysqlTable('email_logs', {
+export const emailLogs = pgTable('email_logs', {
   id: id(),
   storeId: varchar('store_id', { length: 21 }).notNull(),
   reservationId: varchar('reservation_id', { length: 21 }),
@@ -1403,7 +1402,7 @@ export const emailLogs = mysqlTable('email_logs', {
   sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
-export const smsLogs = mysqlTable('sms_logs', {
+export const smsLogs = pgTable('sms_logs', {
   id: id(),
   storeId: varchar('store_id', { length: 21 }).notNull(),
   reservationId: varchar('reservation_id', { length: 21 }),
@@ -1429,7 +1428,7 @@ export const smsLogs = mysqlTable('sms_logs', {
 // Discord Logs (Admin notification logs)
 // ============================================================================
 
-export const discordLogs = mysqlTable('discord_logs', {
+export const discordLogs = pgTable('discord_logs', {
   id: id(),
   storeId: varchar('store_id', { length: 21 }).notNull(),
   reservationId: varchar('reservation_id', { length: 21 }),
@@ -1448,16 +1447,16 @@ export const discordLogs = mysqlTable('discord_logs', {
 // SMS Credits (Prepaid SMS Balance)
 // ============================================================================
 
-export const smsCredits = mysqlTable(
+export const smsCredits = pgTable(
   'sms_credits',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull().unique(),
 
     // Balance tracking
-    balance: int('balance').notNull().default(0), // Current available credits
-    totalPurchased: int('total_purchased').notNull().default(0), // Lifetime total purchased
-    totalUsed: int('total_used').notNull().default(0), // Lifetime total used from prepaid
+    balance: integer('balance').notNull().default(0), // Current available credits
+    totalPurchased: integer('total_purchased').notNull().default(0), // Lifetime total purchased
+    totalUsed: integer('total_used').notNull().default(0), // Lifetime total used from prepaid
 
     // Timestamps
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -1468,23 +1467,23 @@ export const smsCredits = mysqlTable(
   }),
 );
 
-export const smsTopupStatus = mysqlEnum('sms_topup_status', [
+export const smsTopupStatus = pgEnum('sms_topup_status', [
   'pending',
   'completed',
   'failed',
   'refunded',
 ]);
 
-export const smsTopupTransactions = mysqlTable(
+export const smsTopupTransactions = pgTable(
   'sms_topup_transactions',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
 
     // Purchase details
-    quantity: int('quantity').notNull(), // Number of SMS purchased
-    unitPriceCents: int('unit_price_cents').notNull(), // Price per SMS in cents (15 or 7)
-    totalAmountCents: int('total_amount_cents').notNull(), // Total amount in cents
+    quantity: integer('quantity').notNull(), // Number of SMS purchased
+    unitPriceCents: integer('unit_price_cents').notNull(), // Price per SMS in cents (15 or 7)
+    totalAmountCents: integer('total_amount_cents').notNull(), // Total amount in cents
     currency: varchar('currency', { length: 3 }).notNull().default('eur'),
 
     // Stripe references
@@ -1492,7 +1491,7 @@ export const smsTopupTransactions = mysqlTable(
     stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
 
     // Status
-    status: smsTopupStatus.default('pending').notNull(),
+    status: smsTopupStatus('status').default('pending').notNull(),
 
     // Timestamps
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -1511,19 +1510,19 @@ export const smsTopupTransactions = mysqlTable(
 // Review Booster Tables
 // ============================================================================
 
-export const reviewRequestChannel = mysqlEnum('review_request_channel', [
+export const reviewRequestChannel = pgEnum('review_request_channel', [
   'email',
   'sms',
 ]);
 
-export const reviewRequestLogs = mysqlTable(
+export const reviewRequestLogs = pgTable(
   'review_request_logs',
   {
     id: id(),
     reservationId: varchar('reservation_id', { length: 21 }).notNull(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     customerId: varchar('customer_id', { length: 21 }).notNull(),
-    channel: reviewRequestChannel.notNull(),
+    channel: reviewRequestChannel('channel').notNull(),
     sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -1538,29 +1537,29 @@ export const reviewRequestLogs = mysqlTable(
 // Reminder Logs (Automatic pickup/return reminders)
 // ============================================================================
 
-export const reminderType = mysqlEnum('reminder_type', ['pickup', 'return']);
-export const reminderChannel = mysqlEnum('reminder_channel', [
+export const reminderType = pgEnum('reminder_type', ['pickup', 'return']);
+export const reminderChannel = pgEnum('reminder_channel', [
   'email',
   'sms',
   'discord',
 ]);
 // Who the reminder is for: the customer or the store admin/owner.
-export const reminderAudience = mysqlEnum('reminder_audience', [
+export const reminderAudience = pgEnum('reminder_audience', [
   'customer',
   'admin',
 ]);
 
-export const reminderLogs = mysqlTable(
+export const reminderLogs = pgTable(
   'reminder_logs',
   {
     id: id(),
     reservationId: varchar('reservation_id', { length: 21 }).notNull(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     customerId: varchar('customer_id', { length: 21 }).notNull(),
-    type: reminderType.notNull(),
-    channel: reminderChannel.notNull(),
+    type: reminderType('type').notNull(),
+    channel: reminderChannel('channel').notNull(),
     // Partitions customer vs. admin reminders so they dedupe independently.
-    audience: reminderAudience.notNull().default('customer'),
+    audience: reminderAudience('audience').notNull().default('customer'),
     sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -1581,14 +1580,14 @@ export const reminderLogs = mysqlTable(
 
 // Tracks the once-a-day admin reminder digest so it is sent at most once per
 // store per day per channel (the cron runs every minute).
-export const adminDigestLogs = mysqlTable(
+export const adminDigestLogs = pgTable(
   'admin_digest_logs',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     // Store-local calendar day the digest covers, as 'YYYY-MM-DD'.
     digestDate: varchar('digest_date', { length: 10 }).notNull(),
-    channel: reminderChannel.notNull(),
+    channel: reminderChannel('channel').notNull(),
     sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -1601,16 +1600,16 @@ export const adminDigestLogs = mysqlTable(
   }),
 );
 
-export const googlePlacesCache = mysqlTable(
+export const googlePlacesCache = pgTable(
   'google_places_cache',
   {
     id: id(),
     placeId: varchar('place_id', { length: 255 }).notNull().unique(),
     name: varchar('name', { length: 255 }).notNull(),
     address: text('address'),
-    rating: decimal('rating', { precision: 2, scale: 1 }),
-    reviewCount: int('review_count'),
-    reviews: json('reviews').$type<GoogleReview[]>(),
+    rating: numeric('rating', { precision: 2, scale: 1 }),
+    reviewCount: integer('review_count'),
+    reviews: jsonb('reviews').$type<GoogleReview[]>(),
     mapsUrl: text('maps_url'),
     fetchedAt: timestamp('fetched_at', { mode: 'date' }).defaultNow().notNull(),
     expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
@@ -1627,18 +1626,18 @@ export const googlePlacesCache = mysqlTable(
 // Payment Requests
 // ============================================================================
 
-export const paymentRequests = mysqlTable(
+export const paymentRequests = pgTable(
   'payment_requests',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     reservationId: varchar('reservation_id', { length: 21 }).notNull(),
     token: varchar('token', { length: 64 }).notNull().unique(),
-    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+    amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
     description: varchar('description', { length: 255 }).notNull(),
-    type: mysqlEnum('type', ['rental', 'custom']).notNull(),
-    status: mysqlEnum('status', ['pending', 'completed', 'cancelled'])
+    type: pgEnum('payment_request_type', ['rental', 'custom'])('type').notNull(),
+    status: pgEnum('payment_request_status', ['pending', 'completed', 'cancelled'])('status')
       .notNull()
       .default('pending'),
     expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
@@ -1658,23 +1657,23 @@ export const paymentRequests = mysqlTable(
 // Promo Codes
 // ============================================================================
 
-export const promoCodeType = mysqlEnum('promo_code_type', [
+export const promoCodeType = pgEnum('promo_code_type', [
   'percentage',
   'fixed',
 ]);
 
-export const promoCodes = mysqlTable(
+export const promoCodes = pgTable(
   'promo_codes',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     code: varchar('code', { length: 50 }).notNull(),
     description: text('description'),
-    type: promoCodeType.notNull(),
-    value: decimal('value', { precision: 10, scale: 2 }).notNull(),
-    minimumAmount: decimal('minimum_amount', { precision: 10, scale: 2 }),
-    maxUsageCount: int('max_usage_count'),
-    currentUsageCount: int('current_usage_count').notNull().default(0),
+    type: promoCodeType('type').notNull(),
+    value: numeric('value', { precision: 10, scale: 2 }).notNull(),
+    minimumAmount: numeric('minimum_amount', { precision: 10, scale: 2 }),
+    maxUsageCount: integer('max_usage_count'),
+    currentUsageCount: integer('current_usage_count').notNull().default(0),
     startsAt: timestamp('starts_at', { mode: 'date' }),
     expiresAt: timestamp('expires_at', { mode: 'date' }),
     isActive: boolean('is_active').notNull().default(true),
@@ -1954,25 +1953,25 @@ export const productSeasonalPricingTiersRelations = relations(
 // Product Units (Individual Unit Tracking)
 // ============================================================================
 
-export const unitLifecycleStatus = mysqlEnum('lifecycle_status', [
+export const unitLifecycleStatus = pgEnum('lifecycle_status', [
   'active',
   'retired',
 ]);
 
-export const unitRetirementReason = mysqlEnum('retirement_reason', [
+export const unitRetirementReason = pgEnum('retirement_reason', [
   'sold',
   'lost',
   'broken',
   'other',
 ]);
 
-export const unitDowntimeReason = mysqlEnum('reason', [
+export const unitDowntimeReason = pgEnum('unit_downtime_reason', [
   'maintenance',
   'repair',
   'other',
 ]);
 
-export const unitEventType = mysqlEnum('type', [
+export const unitEventType = pgEnum('unit_event_type', [
   'created',
   'deleted',
   'downtime_declared',
@@ -1986,7 +1985,7 @@ export const unitEventType = mysqlEnum('type', [
   'updated',
 ]);
 
-export const productUnits = mysqlTable(
+export const productUnits = pgTable(
   'product_units',
   {
     id: id(),
@@ -1999,7 +1998,7 @@ export const productUnits = mysqlTable(
     notes: text('notes'),
 
     // Flexible attributes for the unit (size/color/etc)
-    attributes: json('attributes').$type<UnitAttributes>(),
+    attributes: jsonb('attributes').$type<UnitAttributes>(),
 
     // Canonical key derived from product booking axes + unit attributes
     // "__default" is used when no booking axes are configured
@@ -2009,11 +2008,11 @@ export const productUnits = mysqlTable(
 
     // Unit lifecycle status
     // Note: downtime and rental state are derived from dedicated records.
-    lifecycleStatus: unitLifecycleStatus.default('active').notNull(),
+    lifecycleStatus: unitLifecycleStatus('lifecycle_status').default('active').notNull(),
     retiredAt: timestamp('retired_at', { mode: 'date' }),
-    retirementReason: unitRetirementReason,
+    retirementReason: unitRetirementReason('retirement_reason'),
     retirementNote: text('retirement_note'),
-    purchasePrice: decimal('purchase_price', { precision: 10, scale: 2 }),
+    purchasePrice: numeric('purchase_price', { precision: 10, scale: 2 }),
     purchasedAt: timestamp('purchased_at', { mode: 'date' }),
 
     // Metadata
@@ -2038,7 +2037,7 @@ export const productUnits = mysqlTable(
   }),
 );
 
-export const productUnitDowntimes = mysqlTable(
+export const productUnitDowntimes = pgTable(
   'product_unit_downtimes',
   {
     id: id(),
@@ -2046,7 +2045,7 @@ export const productUnitDowntimes = mysqlTable(
       .notNull()
       .references(() => productUnits.id, { onDelete: 'cascade' }),
     storeId: varchar('store_id', { length: 21 }).notNull(),
-    reason: unitDowntimeReason.notNull(),
+    reason: unitDowntimeReason('reason').notNull(),
     startsAt: timestamp('starts_at', { mode: 'date' }).notNull(),
     endsAt: timestamp('ends_at', { mode: 'date' }),
     note: text('note'),
@@ -2078,7 +2077,7 @@ export const productUnitDowntimesRelations = relations(
   }),
 );
 
-export const productUnitEvents = mysqlTable(
+export const productUnitEvents = pgTable(
   'product_unit_events',
   {
     id: id(),
@@ -2088,9 +2087,9 @@ export const productUnitEvents = mysqlTable(
     ),
     identifierSnapshot: varchar('identifier_snapshot', { length: 255 }),
     storeId: varchar('store_id', { length: 21 }).notNull(),
-    type: unitEventType.notNull(),
+    type: unitEventType('type').notNull(),
     actorUserId: varchar('actor_user_id', { length: 21 }),
-    payload: json('payload').$type<Record<string, unknown>>(),
+    payload: jsonb('payload').$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -2128,7 +2127,7 @@ export const productUnitsRelations = relations(
 // Reservation Item Units (Unit Assignment to Reservations)
 // ============================================================================
 
-export const reservationItemUnits = mysqlTable(
+export const reservationItemUnits = pgTable(
   'reservation_item_units',
   {
     id: id(),
@@ -2191,13 +2190,13 @@ export const reservationItemUnitsRelations = relations(
 // Product Accessories (Upsell/Cross-sell)
 // ============================================================================
 
-export const productAccessories = mysqlTable(
+export const productAccessories = pgTable(
   'product_accessories',
   {
     id: id(),
     productId: varchar('product_id', { length: 21 }).notNull(),
     accessoryId: varchar('accessory_id', { length: 21 }).notNull(),
-    displayOrder: int('display_order').default(0),
+    displayOrder: integer('display_order').default(0),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -2419,7 +2418,7 @@ export const reminderLogsRelations = relations(reminderLogs, ({ one }) => ({
 // Analytics Tables
 // ============================================================================
 
-export const pageType = mysqlEnum('page_type', [
+export const pageType = pgEnum('page_type', [
   'home',
   'catalog',
   'product',
@@ -2430,23 +2429,23 @@ export const pageType = mysqlEnum('page_type', [
   'rental',
 ]);
 
-export const deviceType = mysqlEnum('device_type', [
+export const deviceType = pgEnum('device_type', [
   'mobile',
   'tablet',
   'desktop',
 ]);
 
-export const pageViews = mysqlTable(
+export const pageViews = pgTable(
   'page_views',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     sessionId: varchar('session_id', { length: 36 }).notNull(), // UUID for anonymous tracking
-    page: pageType.notNull(),
+    page: pageType('page').notNull(),
     productId: varchar('product_id', { length: 21 }), // If viewing a product page
     categoryId: varchar('category_id', { length: 21 }), // If filtering by category
     referrer: varchar('referrer', { length: 500 }), // Where the user came from
-    device: deviceType.default('desktop'),
+    device: deviceType('device').default('desktop'),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -2460,7 +2459,7 @@ export const pageViews = mysqlTable(
   }),
 );
 
-export const storefrontEventType = mysqlEnum('storefront_event_type', [
+export const storefrontEventType = pgEnum('storefront_event_type', [
   'product_view',
   'add_to_cart',
   'remove_from_cart',
@@ -2475,15 +2474,15 @@ export const storefrontEventType = mysqlEnum('storefront_event_type', [
   'login_completed',
 ]);
 
-export const storefrontEvents = mysqlTable(
+export const storefrontEvents = pgTable(
   'storefront_events',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     sessionId: varchar('session_id', { length: 36 }).notNull(),
     customerId: varchar('customer_id', { length: 21 }), // If logged in
-    eventType: storefrontEventType.notNull(),
-    metadata: json('metadata').$type<Record<string, unknown>>(), // productId, quantity, amount, etc.
+    eventType: storefrontEventType('event_type').notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(), // productId, quantity, amount, etc.
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -2497,30 +2496,30 @@ export const storefrontEvents = mysqlTable(
   }),
 );
 
-export const dailyStats = mysqlTable(
+export const dailyStats = pgTable(
   'daily_stats',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     date: timestamp('date', { mode: 'date' }).notNull(), // Day at 00:00:00
-    pageViews: int('page_views').default(0).notNull(),
-    uniqueVisitors: int('unique_visitors').default(0).notNull(),
-    productViews: int('product_views').default(0).notNull(),
-    cartAdditions: int('cart_additions').default(0).notNull(),
-    checkoutStarted: int('checkout_started').default(0).notNull(),
-    checkoutCompleted: int('checkout_completed').default(0).notNull(),
-    reservationsCreated: int('reservations_created').default(0).notNull(),
-    reservationsConfirmed: int('reservations_confirmed').default(0).notNull(),
-    revenue: decimal('revenue', { precision: 10, scale: 2 })
+    pageViews: integer('page_views').default(0).notNull(),
+    uniqueVisitors: integer('unique_visitors').default(0).notNull(),
+    productViews: integer('product_views').default(0).notNull(),
+    cartAdditions: integer('cart_additions').default(0).notNull(),
+    checkoutStarted: integer('checkout_started').default(0).notNull(),
+    checkoutCompleted: integer('checkout_completed').default(0).notNull(),
+    reservationsCreated: integer('reservations_created').default(0).notNull(),
+    reservationsConfirmed: integer('reservations_confirmed').default(0).notNull(),
+    revenue: numeric('revenue', { precision: 10, scale: 2 })
       .default('0')
       .notNull(),
-    averageCartValue: decimal('average_cart_value', {
+    averageCartValue: numeric('average_cart_value', {
       precision: 10,
       scale: 2,
     }).default('0'),
-    mobileVisitors: int('mobile_visitors').default(0).notNull(),
-    tabletVisitors: int('tablet_visitors').default(0).notNull(),
-    desktopVisitors: int('desktop_visitors').default(0).notNull(),
+    mobileVisitors: integer('mobile_visitors').default(0).notNull(),
+    tabletVisitors: integer('tablet_visitors').default(0).notNull(),
+    desktopVisitors: integer('desktop_visitors').default(0).notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -2538,17 +2537,17 @@ export const dailyStats = mysqlTable(
   }),
 );
 
-export const productStats = mysqlTable(
+export const productStats = pgTable(
   'product_stats',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     productId: varchar('product_id', { length: 21 }).notNull(),
     date: timestamp('date', { mode: 'date' }).notNull(),
-    views: int('views').default(0).notNull(),
-    cartAdditions: int('cart_additions').default(0).notNull(),
-    reservations: int('reservations').default(0).notNull(),
-    revenue: decimal('revenue', { precision: 10, scale: 2 })
+    views: integer('views').default(0).notNull(),
+    cartAdditions: integer('cart_additions').default(0).notNull(),
+    reservations: integer('reservations').default(0).notNull(),
+    revenue: numeric('revenue', { precision: 10, scale: 2 })
       .default('0')
       .notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -2624,7 +2623,7 @@ export const productStatsRelations = relations(productStats, ({ one }) => ({
  * - category: Template for products in a specific category
  * - product: Template for a specific product (highest priority)
  */
-export const inspectionTemplateScope = mysqlEnum('inspection_template_scope', [
+export const inspectionTemplateScope = pgEnum('inspection_template_scope', [
   'store',
   'category',
   'product',
@@ -2633,7 +2632,7 @@ export const inspectionTemplateScope = mysqlEnum('inspection_template_scope', [
 /**
  * Field types for inspection template fields
  */
-export const inspectionFieldType = mysqlEnum('inspection_field_type', [
+export const inspectionFieldType = pgEnum('inspection_field_type', [
   'checkbox', // Simple yes/no (e.g., "Brakes working")
   'rating', // 1-5 scale (e.g., "Tire condition")
   'text', // Free text notes
@@ -2644,7 +2643,7 @@ export const inspectionFieldType = mysqlEnum('inspection_field_type', [
 /**
  * Inspection type: departure (pickup) or return
  */
-export const inspectionType = mysqlEnum('inspection_type', [
+export const inspectionType = pgEnum('inspection_type', [
   'departure', // Check-out inspection when customer picks up
   'return', // Check-in inspection when customer returns
 ]);
@@ -2652,7 +2651,7 @@ export const inspectionType = mysqlEnum('inspection_type', [
 /**
  * Inspection status workflow
  */
-export const inspectionStatus = mysqlEnum('inspection_status', [
+export const inspectionStatus = pgEnum('inspection_status', [
   'draft', // In progress, not yet completed
   'completed', // Inspection finished by staff
   'signed', // Customer signed the inspection
@@ -2661,7 +2660,7 @@ export const inspectionStatus = mysqlEnum('inspection_status', [
 /**
  * Overall condition rating for quick assessment
  */
-export const conditionRating = mysqlEnum('condition_rating', [
+export const conditionRating = pgEnum('condition_rating', [
   'excellent', // Perfect condition
   'good', // Minor wear, acceptable
   'fair', // Noticeable wear, still functional
@@ -2671,18 +2670,18 @@ export const conditionRating = mysqlEnum('condition_rating', [
 /**
  * Inspection templates define what points to check for products
  */
-export const inspectionTemplates = mysqlTable(
+export const inspectionTemplates = pgTable(
   'inspection_templates',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
-    scope: inspectionTemplateScope.notNull(),
+    scope: inspectionTemplateScope('scope').notNull(),
     categoryId: varchar('category_id', { length: 21 }), // If scope = 'category'
     productId: varchar('product_id', { length: 21 }), // If scope = 'product'
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     isActive: boolean('is_active').default(true).notNull(),
-    displayOrder: int('display_order').default(0).notNull(),
+    displayOrder: integer('display_order').default(0).notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -2705,21 +2704,21 @@ export const inspectionTemplates = mysqlTable(
 /**
  * Individual inspection points within a template
  */
-export const inspectionTemplateFields = mysqlTable(
+export const inspectionTemplateFields = pgTable(
   'inspection_template_fields',
   {
     id: id(),
     templateId: varchar('template_id', { length: 21 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
-    fieldType: inspectionFieldType.notNull(),
-    options: json('options').$type<string[]>(), // For 'select' type
-    ratingMin: int('rating_min').default(1), // For 'rating' type
-    ratingMax: int('rating_max').default(5), // For 'rating' type
+    fieldType: inspectionFieldType('field_type').notNull(),
+    options: jsonb('options').$type<string[]>(), // For 'select' type
+    ratingMin: integer('rating_min').default(1), // For 'rating' type
+    ratingMax: integer('rating_max').default(5), // For 'rating' type
     numberUnit: varchar('number_unit', { length: 50 }), // For 'number' type (e.g., "hours", "km")
     isRequired: boolean('is_required').default(false).notNull(),
     sectionName: varchar('section_name', { length: 100 }), // Optional grouping
-    displayOrder: int('display_order').default(0).notNull(),
+    displayOrder: integer('display_order').default(0).notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -2736,17 +2735,17 @@ export const inspectionTemplateFields = mysqlTable(
 /**
  * Inspection records for reservations
  */
-export const inspections = mysqlTable(
+export const inspections = pgTable(
   'inspections',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     reservationId: varchar('reservation_id', { length: 21 }).notNull(),
-    type: inspectionType.notNull(),
-    status: inspectionStatus.default('draft').notNull(),
+    type: inspectionType('type').notNull(),
+    status: inspectionStatus('status').default('draft').notNull(),
     // Template reference (snapshot stored for historical accuracy)
     templateId: varchar('template_id', { length: 21 }),
-    templateSnapshot: json('template_snapshot').$type<{
+    templateSnapshot: jsonb('template_snapshot').$type<{
       id: string;
       name: string;
       fields: Array<{
@@ -2767,13 +2766,13 @@ export const inspections = mysqlTable(
     performedById: varchar('performed_by_id', { length: 21 }),
     performedAt: timestamp('performed_at', { mode: 'date' }),
     // Customer signature
-    customerSignature: longtext('customer_signature'), // Base64 signature image
+    customerSignature: text('customer_signature'), // Base64 signature image
     signedAt: timestamp('signed_at', { mode: 'date' }),
     signatureIp: varchar('signature_ip', { length: 50 }),
     // Damage assessment
     hasDamage: boolean('has_damage').default(false).notNull(),
     damageDescription: text('damage_description'),
-    estimatedDamageCost: decimal('estimated_damage_cost', {
+    estimatedDamageCost: numeric('estimated_damage_cost', {
       precision: 10,
       scale: 2,
     }),
@@ -2798,7 +2797,7 @@ export const inspections = mysqlTable(
 /**
  * Per-item inspection within a reservation
  */
-export const inspectionItems = mysqlTable(
+export const inspectionItems = pgTable(
   'inspection_items',
   {
     id: id(),
@@ -2806,14 +2805,14 @@ export const inspectionItems = mysqlTable(
     reservationItemId: varchar('reservation_item_id', { length: 21 }).notNull(),
     productUnitId: varchar('product_unit_id', { length: 21 }), // If unit tracking enabled
     // Product snapshot for historical reference
-    productSnapshot: json('product_snapshot')
+    productSnapshot: jsonb('product_snapshot')
       .$type<{
         name: string;
         unitIdentifier?: string;
       }>()
       .notNull(),
     // Overall quick assessment
-    overallCondition: conditionRating,
+    overallCondition: conditionRating('overall_condition'),
     notes: text('notes'),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -2831,14 +2830,14 @@ export const inspectionItems = mysqlTable(
 /**
  * Field values recorded during inspection
  */
-export const inspectionFieldValues = mysqlTable(
+export const inspectionFieldValues = pgTable(
   'inspection_field_values',
   {
     id: id(),
     inspectionItemId: varchar('inspection_item_id', { length: 21 }).notNull(),
     templateFieldId: varchar('template_field_id', { length: 21 }).notNull(),
     // Field snapshot for historical reference
-    fieldSnapshot: json('field_snapshot')
+    fieldSnapshot: jsonb('field_snapshot')
       .$type<{
         name: string;
         fieldType: string;
@@ -2847,9 +2846,9 @@ export const inspectionFieldValues = mysqlTable(
       .notNull(),
     // Values (only one used based on type)
     checkboxValue: boolean('checkbox_value'),
-    ratingValue: int('rating_value'),
+    ratingValue: integer('rating_value'),
     textValue: text('text_value'),
-    numberValue: decimal('number_value', { precision: 15, scale: 4 }),
+    numberValue: numeric('number_value', { precision: 15, scale: 4 }),
     selectValue: varchar('select_value', { length: 255 }),
     // Quick flag for filtering issues
     hasIssue: boolean('has_issue').default(false).notNull(),
@@ -2872,7 +2871,7 @@ export const inspectionFieldValues = mysqlTable(
 /**
  * Photos taken during inspection
  */
-export const inspectionPhotos = mysqlTable(
+export const inspectionPhotos = pgTable(
   'inspection_photos',
   {
     id: id(),
@@ -2885,7 +2884,7 @@ export const inspectionPhotos = mysqlTable(
     thumbnailUrl: text('thumbnail_url'),
     // Metadata
     caption: text('caption'),
-    displayOrder: int('display_order').default(0).notNull(),
+    displayOrder: integer('display_order').default(0).notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
@@ -3016,7 +3015,7 @@ export type ApiKeyPermissions = {
   settings: 'none' | 'read' | 'write';
 };
 
-export const apiKeys = mysqlTable(
+export const apiKeys = pgTable(
   'api_keys',
   {
     id: id(),
@@ -3027,7 +3026,7 @@ export const apiKeys = mysqlTable(
     keyPrefix: varchar('key_prefix', { length: 12 }).notNull(),
     keyHash: varchar('key_hash', { length: 64 }).notNull(),
 
-    permissions: json('permissions').$type<ApiKeyPermissions>().notNull(),
+    permissions: jsonb('permissions').$type<ApiKeyPermissions>().notNull(),
 
     lastUsedAt: timestamp('last_used_at', { mode: 'date' }),
     expiresAt: timestamp('expires_at', { mode: 'date' }),
@@ -3055,7 +3054,7 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
 // Web Push device subscriptions. One row per browser/device, owned by a user
 // (a user can belong to many stores via store_members; send-time fan-out
 // resolves the target devices from store membership, not from storeId here).
-export const pushSubscriptions = mysqlTable(
+export const pushSubscriptions = pgTable(
   'push_subscriptions',
   {
     id: id(),
@@ -3064,14 +3063,13 @@ export const pushSubscriptions = mysqlTable(
     storeId: varchar('store_id', { length: 21 }),
 
     endpoint: text('endpoint').notNull(),
-    // MySQL cannot UNIQUE a TEXT column, so dedupe on a sha-256 hex of the
-    // endpoint (mirrors api_keys.key_hash).
+    // Dedupe on a stable sha-256 hex of the endpoint (mirrors api_keys.key_hash).
     endpointHash: varchar('endpoint_hash', { length: 64 }).notNull(),
     p256dh: varchar('p256dh', { length: 255 }).notNull(),
     auth: varchar('auth', { length: 255 }).notNull(),
     userAgent: text('user_agent'),
 
-    failureCount: int('failure_count').notNull().default(0),
+    failureCount: integer('failure_count').notNull().default(0),
     lastSuccessAt: timestamp('last_success_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
@@ -3103,7 +3101,7 @@ export const pushSubscriptionsRelations = relations(
 // AI Chat
 // ============================================================================
 
-export const aiChats = mysqlTable(
+export const aiChats = pgTable(
   'ai_chats',
   {
     id: id(),
@@ -3121,14 +3119,14 @@ export const aiChats = mysqlTable(
   }),
 );
 
-export const aiChatMessages = mysqlTable(
+export const aiChatMessages = pgTable(
   'ai_chat_messages',
   {
     id: id(),
     chatId: varchar('chat_id', { length: 21 }).notNull(),
-    role: mysqlEnum('role', ['user', 'assistant', 'system', 'tool']).notNull(),
-    content: longtext('content'),
-    toolInvocations: json('tool_invocations').$type<unknown[]>(),
+    role: pgEnum('ai_chat_message_role', ['user', 'assistant', 'system', 'tool'])('role').notNull(),
+    content: text('content'),
+    toolInvocations: jsonb('tool_invocations').$type<unknown[]>(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({

@@ -278,9 +278,10 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
           eq(reservations.customerId, session.customerId),
           eq(reservations.status, 'quote'),
         ),
-      );
+      )
+      .returning({ id: reservations.id });
 
-    if ((result[0]?.affectedRows ?? 0) === 0) {
+    if (result.length === 0) {
       return false;
     }
 

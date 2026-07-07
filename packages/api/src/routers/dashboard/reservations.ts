@@ -642,7 +642,36 @@ const sign = dashboardProcedure
     }
   });
 
-export const dashboardReservationsRouter = {
+export type DashboardReservationsRouter = {
+  poll: typeof poll;
+  list: typeof list;
+  getById: typeof getById;
+  getPaymentMethod: typeof getPaymentMethod;
+  getAvailableUnitsForItem: typeof getAvailableUnitsForItem;
+  createManualReservation: typeof createManualReservation;
+  updateReservation: typeof updateReservation;
+  previewTulipQuote: typeof previewTulipQuote;
+  previewManualTulipQuote: typeof previewManualTulipQuote;
+  updateNotes: typeof updateNotes;
+  updateStatus: typeof updateStatus;
+  cancel: typeof cancel;
+  recordPayment: typeof recordPayment;
+  deletePayment: typeof deletePayment;
+  returnDeposit: typeof returnDeposit;
+  recordDamage: typeof recordDamage;
+  createDepositHold: typeof createDepositHold;
+  captureDepositHold: typeof captureDepositHold;
+  releaseDepositHold: typeof releaseDepositHold;
+  assignUnitsToItem: typeof assignUnitsToItem;
+  sendReservationEmail: typeof sendReservationEmail;
+  sendModificationEmail: typeof sendModificationEmail;
+  sendAccessLink: typeof sendAccessLink;
+  sendAccessLinkBySms: typeof sendAccessLinkBySms;
+  requestPayment: typeof requestPayment;
+  sign: typeof sign;
+};
+
+export const dashboardReservationsRouter: DashboardReservationsRouter = {
   poll,
   list,
   getById,

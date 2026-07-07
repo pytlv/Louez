@@ -26,7 +26,7 @@ import { notifyReferrerRewardGranted } from './notify';
 import { qualifiesForReferralReward } from './qualification';
 import { computeReferrerReward } from './reward';
 
-/** mysql2 surfaces a unique-violation as a "Duplicate entry" error — swallowed for idempotency. */
+/** Unique-constraint violations are swallowed for idempotency. */
 function isDuplicateError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return message.includes('Duplicate') || message.includes('unique');
@@ -643,8 +643,9 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
             eq(referralRewards.id, reward.id),
             eq(referralRewards.status, 'granted'),
           ),
-        );
-      if ((claim[0]?.affectedRows ?? 0) === 0) {
+        )
+        .returning({ id: referralRewards.id });
+      if (claim.length === 0) {
         clawbackClaimed = false;
         return;
       }
@@ -719,8 +720,9 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
           eq(referralRewards.id, reward.id),
           eq(referralRewards.status, 'granted'),
         ),
-      );
-    if ((claim[0]?.affectedRows ?? 0) === 0) {
+      )
+      .returning({ id: referralRewards.id });
+    if (claim.length === 0) {
       await trackClawbackEvaluated({
         reward,
         clawedBack: false,

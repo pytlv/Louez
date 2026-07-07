@@ -82,7 +82,8 @@ export async function GET(request: Request) {
       status: 'active',
       updatedAt: new Date(),
     })
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: [storeIntegrations.storeId, storeIntegrations.providerKey],
       set: {
         enabled: true,
         connectedByUserId: session.user.id,
@@ -117,7 +118,8 @@ export async function GET(request: Request) {
       keyVersion: encryptedRefreshToken.keyVersion,
       updatedAt: new Date(),
     })
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: integrationCredentials.integrationId,
       set: {
         accessTokenEncrypted: encryptedAccessToken.encrypted,
         refreshTokenEncrypted: encryptedRefreshToken.encrypted,
@@ -141,7 +143,8 @@ export async function GET(request: Request) {
       backfillPastDays: 30,
       updatedAt: new Date(),
     })
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: storeCalendarIntegrations.integrationId,
       set: {
         calendarId: calendar.id,
         calendarName: calendar.summary,

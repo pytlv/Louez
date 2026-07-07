@@ -16,7 +16,7 @@ This document is the entry point for all architecture and convention decisions a
 |-------|-----------|----------------|
 | Monorepo | Turborepo + pnpm | Yes |
 | Language | TypeScript (strict) | Yes |
-| Database | MySQL + Drizzle ORM | Yes |
+| Database | Supabase Postgres + Drizzle ORM | Yes |
 | Auth | Better Auth | Yes |
 | API | ORPC | Yes |
 | Server state | TanStack React Query | Yes |

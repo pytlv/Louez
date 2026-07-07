@@ -1,5 +1,5 @@
-import mysql from 'mysql2/promise'
 import { execSync } from 'child_process'
+import postgres from 'postgres'
 
 // ANSI color codes for console output
 const colors = {
@@ -42,21 +42,28 @@ export async function setupDatabase(): Promise<void> {
 
   log('🔍', 'Checking database configuration...', colors.blue)
 
-  let connection: mysql.Connection | null = null
+  let connection: postgres.Sql | null = null
 
   try {
     // Step 1: Test database connection
     log('🔌', 'Connecting to database...', colors.blue)
 
-    connection = await mysql.createConnection(databaseUrl)
+    connection = postgres(databaseUrl, { max: 1 })
+    await connection`select 1`
 
     log('✅', 'Database connection successful!', colors.green)
 
     // Step 2: Check existing tables
     log('📋', 'Checking existing tables...', colors.blue)
 
-    const [rows] = await connection.query('SHOW TABLES')
-    const tables = (rows as Array<Record<string, string>>).map((row) => Object.values(row)[0])
+    const rows = await connection<{ table_name: string }[]>`
+      select table_name
+      from information_schema.tables
+      where table_schema = current_schema()
+        and table_type = 'BASE TABLE'
+      order by table_name
+    `
+    const tables = rows.map((row) => row.table_name)
 
     if (tables.length > 0) {
       // Database has tables - check if it's properly configured
@@ -107,8 +114,14 @@ export async function setupDatabase(): Promise<void> {
     // Step 4: Verify setup - this is the source of truth
     log('🔍', 'Verifying database setup...', colors.blue)
 
-    const [verifyRows] = await connection.query('SHOW TABLES')
-    const verifyTables = (verifyRows as Array<Record<string, string>>).map((row) => Object.values(row)[0])
+    const verifyRows = await connection<{ table_name: string }[]>`
+      select table_name
+      from information_schema.tables
+      where table_schema = current_schema()
+        and table_type = 'BASE TABLE'
+      order by table_name
+    `
+    const verifyTables = verifyRows.map((row) => row.table_name)
 
     if (verifyTables.length === 0) {
       log('❌', 'Setup failed - no tables created.', colors.red)
@@ -138,7 +151,7 @@ export async function setupDatabase(): Promise<void> {
     if (error instanceof Error) {
       // Provide helpful error messages based on common issues
       if (error.message.includes('ECONNREFUSED')) {
-        log('💡', 'Could not connect to database. Is MySQL running?', colors.yellow)
+        log('💡', 'Could not connect to database. Is Postgres reachable?', colors.yellow)
       } else if (error.message.includes('Access denied')) {
         log('💡', 'Database credentials are incorrect. Check DATABASE_URL.', colors.yellow)
       } else if (error.message.includes('Unknown database')) {

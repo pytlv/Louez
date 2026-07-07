@@ -89,7 +89,11 @@ export async function markReservationForCalendarSync(
         nextAttemptAt: new Date(),
         updatedAt: new Date(),
       })
-      .onDuplicateKeyUpdate({
+      .onConflictDoUpdate({
+        target: [
+          reservationCalendarEvents.reservationId,
+          reservationCalendarEvents.integrationId,
+        ],
         set: {
           syncStatus: 'pending',
           attemptCount: 0,
@@ -150,7 +154,11 @@ export async function enqueueCalendarBackfill(params: {
         nextAttemptAt: new Date(),
         updatedAt: new Date(),
       })
-      .onDuplicateKeyUpdate({
+      .onConflictDoUpdate({
+        target: [
+          reservationCalendarEvents.reservationId,
+          reservationCalendarEvents.integrationId,
+        ],
         set: {
           syncStatus: 'pending',
           attemptCount: 0,

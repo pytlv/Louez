@@ -4,8 +4,8 @@ import type { Database } from '@louez/db'
 import { pushSubscriptions } from '@louez/db/schema'
 
 /**
- * SHA-256 hex of a push endpoint. MySQL cannot UNIQUE a TEXT column, so the
- * endpoint is deduped on this hash (mirrors hashApiKey in api-keys.ts).
+ * SHA-256 hex of a push endpoint. The endpoint is deduped on this stable hash
+ * (mirrors hashApiKey in api-keys.ts).
  */
 async function hashEndpoint(endpoint: string): Promise<string> {
   const data = new TextEncoder().encode(endpoint)
@@ -39,7 +39,8 @@ export async function subscribePush(params: {
       auth,
       userAgent: userAgent ?? null,
     })
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpointHash,
       set: {
         userId,
         storeId,

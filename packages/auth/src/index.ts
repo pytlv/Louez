@@ -80,7 +80,7 @@ export const authInstance = betterAuth({
   trustedOrigins: [env.AUTH_URL],
 
   database: drizzleAdapter(db, {
-    provider: 'mysql',
+    provider: 'pg',
     schema: {
       user: schema.users,
       account: schema.accounts,

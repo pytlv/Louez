@@ -112,7 +112,7 @@ export async function createApiKey(params: {
       permissions,
       expiresAt: expiresAt ?? null,
     })
-    .$returningId()
+    .returning({ id: apiKeys.id })
 
   return { id: created.id, key: raw, prefix }
 }
@@ -155,7 +155,9 @@ export async function revokeApiKey(params: {
       )
     )
 
-  if (result[0].affectedRows === 0) {
+    .returning({ id: apiKeys.id })
+
+  if (result.length === 0) {
     throw new ApiServiceError('NOT_FOUND', 'errors.apiKeyNotFound')
   }
 }

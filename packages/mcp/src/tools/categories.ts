@@ -48,7 +48,7 @@ export function registerCategoryTools(server: McpServer, ctx: McpSessionContext)
           name,
           description: description ?? null,
         })
-        .$returningId()
+        .returning({ id: categories.id })
 
       return toolResult(`Catégorie "${name}" créée avec succès (ID: ${created.id}).`)
     }

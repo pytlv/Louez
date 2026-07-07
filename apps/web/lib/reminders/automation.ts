@@ -494,7 +494,15 @@ async function logReminder(
   await db
     .insert(reminderLogs)
     .values({ reservationId, storeId, customerId, type, channel, audience })
-    .onDuplicateKeyUpdate({ set: { sentAt: new Date() } })
+    .onConflictDoUpdate({
+      target: [
+        reminderLogs.reservationId,
+        reminderLogs.type,
+        reminderLogs.channel,
+        reminderLogs.audience,
+      ],
+      set: { sentAt: new Date() },
+    })
 }
 
 // ============================================================================

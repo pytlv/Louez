@@ -11,9 +11,9 @@
  */
 import 'dotenv/config';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/mysql2';
-import { type Pool, createPool } from 'mysql2/promise';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import { nanoid } from 'nanoid';
+import postgres from 'postgres';
 
 // Import schema
 import * as schema from '@louez/db';
@@ -602,9 +602,9 @@ async function main(): Promise<void> {
   // Connect to database
   logInfo('Connecting to database...');
 
-  const pool = createPool(process.env.DATABASE_URL!);
+  const client = postgres(process.env.DATABASE_URL!, { max: 1 });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = drizzle(pool as any, { schema, mode: 'default' }) as DrizzleDB;
+  const db = drizzle(client as any, { schema }) as DrizzleDB;
 
   logSuccess('Database connected');
 
@@ -644,7 +644,7 @@ async function main(): Promise<void> {
     console.error(error);
     process.exit(1);
   } finally {
-    await pool.end();
+    await client.end();
   }
 }
 

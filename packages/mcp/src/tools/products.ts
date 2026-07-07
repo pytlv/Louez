@@ -200,7 +200,7 @@ export function registerProductTools(
           categoryId: categoryId ?? null,
           status: 'active',
         })
-        .$returningId();
+        .returning({ id: products.id });
 
       return toolResult(
         `Product created successfully.\n\n` +

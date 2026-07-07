@@ -184,7 +184,7 @@ export function createAITools(ctx: AIChatContext) {
             categoryId: categoryId ?? null,
             status: 'active',
           })
-          .$returningId();
+          .returning({ id: products.id });
 
         return {
           id: created.id,
@@ -604,7 +604,7 @@ export function createAITools(ctx: AIChatContext) {
             customerType: customerType ?? 'individual',
             companyName: companyName ?? null,
           })
-          .$returningId();
+          .returning({ id: customers.id });
 
         return { id: created.id, firstName, lastName, email };
       },
@@ -1274,7 +1274,7 @@ export function createAITools(ctx: AIChatContext) {
             name,
             description: description ?? null,
           })
-          .$returningId();
+          .returning({ id: categories.id });
 
         return { id: created.id, name };
       },

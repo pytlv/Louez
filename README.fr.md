@@ -134,7 +134,7 @@ services:
     ports:
       - '3000:3000'
     environment:
-      - DATABASE_URL=mysql://louez:password@db:3306/louez
+      - DATABASE_URL=postgresql://louez:password@db:5432/louez
       - AUTH_SECRET=changez-moi-avec-une-chaine-de-32-caracteres
       - SMTP_HOST=smtp.exemple.com
       - SMTP_PORT=587
@@ -148,23 +148,22 @@ services:
     restart: unless-stopped
 
   db:
-    image: mysql:8
+    image: postgres:17
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=louez
-      - MYSQL_USER=louez
-      - MYSQL_PASSWORD=password
+      - POSTGRES_DB=louez
+      - POSTGRES_USER=louez
+      - POSTGRES_PASSWORD=password
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      test: ['CMD-SHELL', 'pg_isready -U louez -d louez']
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
 volumes:
-  mysql_data:
+  postgres_data:
 ```
 
 Lancez :
@@ -241,7 +240,7 @@ Construit avec des technologies modernes et éprouvées :
 
 | Variable              | Requis | Description                          |
 | --------------------- | :----: | ------------------------------------ |
-| `DATABASE_URL`        |   ✅   | Chaîne de connexion MySQL            |
+| `DATABASE_URL`        |   ✅   | Chaîne de connexion Postgres         |
 | `AUTH_SECRET`         |   ✅   | Secret aléatoire (min 32 caractères) |
 | `SMTP_HOST`           |   ✅   | Nom d'hôte du serveur SMTP           |
 | `SMTP_PORT`           |   ✅   | Port du serveur SMTP                 |

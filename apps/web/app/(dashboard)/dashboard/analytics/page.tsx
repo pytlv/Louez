@@ -599,7 +599,7 @@ async function TrafficStatsSection({
   let stats = await getTrafficStats(storeId, period);
 
   // If no aggregated data, try raw events
-  // Note: MySQL returns strings for aggregated values, so use Number() for comparison
+  // Aggregated values can arrive as strings, so use Number() for comparison.
   if (Number(stats.visitors) === 0 && Number(stats.productViews) === 0) {
     stats = await getRawEventStats(storeId, period);
   }

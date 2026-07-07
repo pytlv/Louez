@@ -22,7 +22,7 @@
     "typescript",
     "tailwindcss",
     "drizzle",
-    "mysql",
+    "postgres",
     "storefront",
     "inventory-management",
     "reservation-system",

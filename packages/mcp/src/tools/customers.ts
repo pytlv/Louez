@@ -183,7 +183,7 @@ export function registerCustomerTools(
           city: city ?? null,
           postalCode: postalCode ?? null,
         })
-        .$returningId();
+        .returning({ id: customers.id });
 
       return toolResult(
         `Customer created successfully.\n\n` +

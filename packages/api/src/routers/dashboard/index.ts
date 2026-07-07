@@ -30,7 +30,19 @@ const ping = dashboardProcedure
  * Dashboard router - procedures for authenticated store members
  * Add new sub-routers here as features are implemented
  */
-export const dashboardRouter = {
+export type DashboardRouter = {
+  ping: typeof ping;
+  apiKeys: typeof dashboardApiKeysRouter;
+  customers: typeof dashboardCustomersRouter;
+  integrations: typeof dashboardIntegrationsRouter;
+  settings: typeof dashboardSettingsRouter;
+  reservations: typeof dashboardReservationsRouter;
+  onboarding: typeof dashboardOnboardingRouter;
+  notifications: typeof dashboardNotificationsRouter;
+  referral: typeof dashboardReferralRouter;
+};
+
+export const dashboardRouter: DashboardRouter = {
   ping,
   apiKeys: dashboardApiKeysRouter,
   customers: dashboardCustomersRouter,

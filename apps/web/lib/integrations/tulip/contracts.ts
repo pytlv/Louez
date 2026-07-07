@@ -828,9 +828,10 @@ export async function createTulipContractForReservation(params: {
           ne(reservations.tulipContractStatus, 'creating'),
         ),
       ),
-    );
+    )
+    .returning({ id: reservations.id });
 
-  if (creationLockResult[0]?.affectedRows === 0) {
+  if (creationLockResult.length === 0) {
     const lockedReservation = await db.query.reservations.findFirst({
       where: eq(reservations.id, reservation.id),
       columns: {
@@ -1063,9 +1064,10 @@ export async function createTulipContractForReservation(params: {
         isNull(reservations.tulipContractId),
         eq(reservations.tulipContractStatus, 'creating'),
       ),
-    );
+    )
+    .returning({ id: reservations.id });
 
-  if (attachResult[0]?.affectedRows === 0) {
+  if (attachResult.length === 0) {
     const attachedReservation = await db.query.reservations.findFirst({
       where: eq(reservations.id, reservation.id),
       columns: {

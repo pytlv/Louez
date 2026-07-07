@@ -67,7 +67,7 @@ async function getReservationsForPeriod(
 }
 
 async function getProducts(storeId: string) {
-  // Only select columns needed for the calendar to avoid MySQL sort memory issues
+  // Only select columns needed for the calendar to keep sorting lightweight.
   return db
     .select({
       id: products.id,

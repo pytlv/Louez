@@ -311,7 +311,8 @@ async function upsertTulipMappingRow(params: {
       productId: params.productId,
       tulipProductId: params.tulipProductId,
     })
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: productsTulip.productId,
       set: {
         tulipProductId: params.tulipProductId,
       },

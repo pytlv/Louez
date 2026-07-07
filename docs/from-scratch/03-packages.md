@@ -46,7 +46,7 @@ packages/db/
 
 #### DB client conventions
 
-- Single connection pool via `mysql2/promise`
+- Single connection client via `postgres`
 - Global singleton pattern to prevent multiple connections in dev (hot reload)
 - Export `db`, `schema`, and the `Transaction` type
 

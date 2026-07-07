@@ -57,7 +57,7 @@ export async function processReviewRequests(): Promise<ProcessResult> {
   try {
     // Get all stores with review booster enabled
     const storesWithReviewBooster = await db.query.stores.findMany({
-      where: sql`JSON_EXTRACT(review_booster_settings, '$.enabled') = true`,
+      where: sql`review_booster_settings->>'enabled' = 'true'`,
     })
 
     for (const store of storesWithReviewBooster) {

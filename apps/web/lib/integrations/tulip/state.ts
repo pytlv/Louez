@@ -169,7 +169,8 @@ export async function saveTulipIntegrationForStore(params: {
         publicMode: params.publicMode,
         connectedAt,
       })
-      .onDuplicateKeyUpdate({
+      .onConflictDoUpdate({
+        target: storeTulipIntegrations.integrationId,
         set: {
           renterUid: normalizeOptionalText(params.renterUid),
           archivedRenterUid: normalizeOptionalText(params.archivedRenterUid),

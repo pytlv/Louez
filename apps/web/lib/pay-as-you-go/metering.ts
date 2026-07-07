@@ -304,14 +304,15 @@ export async function voidReservationFee(
           eq(platformFees.source, 'free'),
         ),
       ),
-    );
+    )
+    .returning({ id: platformFees.id });
 
-  const affectedRows = result[0]?.affectedRows ?? 0;
+  const updatedRows = result.length;
 
   // Nothing voided: if a fee was already collected at source (paid) or billed at
   // month-end, it can't simply be voided. Surface it so a cancellation that also refunds
   // the customer is reconciled via the refund webhook, and isn't silently kept.
-  if (affectedRows === 0) {
+  if (updatedRows === 0) {
     const existing = await db.query.platformFees.findFirst({
       where: eq(platformFees.dedupKey, reservationFeeKey(reservationId)),
       columns: { status: true, source: true },
@@ -327,7 +328,7 @@ export async function voidReservationFee(
     }
   }
 
-  return { voided: affectedRows > 0 };
+  return { voided: updatedRows > 0 };
 }
 
 /** Whether a (non-voided) reservation fee already exists for this reservation. */

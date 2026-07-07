@@ -1,15 +1,15 @@
 # From Scratch — Backend
 
-## Database — Drizzle + MySQL
+## Database — Drizzle + Supabase Postgres
 
 ### Schema conventions
 
 ```typescript
-import { mysqlTable, varchar, char, timestamp } from "drizzle-orm/mysql-core";
+import { pgTable, varchar, timestamp } from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
 
-export const podcastTable = mysqlTable("podcast", {
-  id: char("id", { length: 21 }).primaryKey().$defaultFn(() => nanoid()),
+export const podcastTable = pgTable("podcast", {
+  id: varchar("id", { length: 21 }).primaryKey().$defaultFn(() => nanoid()),
   title: varchar("title", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -219,8 +219,8 @@ Directus manages its own tables (`directus_files`, `directus_folders`, etc.). In
 
 ```typescript
 // schema.directus.ts — read-only mirror of the Directus files table
-export const directusFilesTable = mysqlTable("directus_files", {
-  id: char({ length: 36 }).notNull(),
+export const directusFilesTable = pgTable("directus_files", {
+  id: varchar({ length: 36 }).notNull(),
   storage: varchar({ length: 255 }).notNull(),
   filenameDisk: varchar("filename_disk", { length: 255 }),
   filenameDownload: varchar("filename_download", { length: 255 }).notNull(),

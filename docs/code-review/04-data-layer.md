@@ -28,7 +28,7 @@ Any operation that inserts/updates multiple tables must be wrapped in a transact
 
 ### [DL-04] Idempotent inserts for user-generated content
 
-When inserting data that may collide (tags, slugs, etc.), use `onDuplicateKeyUpdate` instead of catching errors. This avoids race conditions and collation mismatches.
+When inserting data that may collide (tags, slugs, etc.), use `onConflictDoUpdate` instead of catching errors. This avoids race conditions and collation mismatches.
 
 ### [DL-05] ORPC routes follow domain grouping
 

@@ -179,10 +179,11 @@ function transformCacheToDetails(cached: {
  * Clean expired cache entries (can be called from a cron job)
  */
 export async function cleanExpiredCache(): Promise<number> {
-  const result = await db.delete(googlePlacesCache).where(lt(googlePlacesCache.expiresAt, new Date()))
-  // MySQL returns [ResultSetHeader, FieldPacket[]] - the first element has affectedRows
-  const affectedRows = (result as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0
-  return affectedRows
+  const deleted = await db
+    .delete(googlePlacesCache)
+    .where(lt(googlePlacesCache.expiresAt, new Date()))
+    .returning({ id: googlePlacesCache.id })
+  return deleted.length
 }
 
 /**
@@ -203,8 +204,8 @@ export async function refreshAllStoresCache(): Promise<{
   try {
     // Get all stores with Review Booster enabled and a Google Place ID
     const storesWithReviewBooster = await db.query.stores.findMany({
-      where: sql`JSON_EXTRACT(review_booster_settings, '$.enabled') = true
-                 AND JSON_EXTRACT(review_booster_settings, '$.googlePlaceId') IS NOT NULL`,
+      where: sql`review_booster_settings->>'enabled' = 'true'
+                 AND review_booster_settings->>'googlePlaceId' IS NOT NULL`,
     })
 
     for (const store of storesWithReviewBooster) {
