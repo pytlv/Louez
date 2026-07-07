@@ -8,6 +8,13 @@ import { env as validationsEnv } from '@louez/validations/env';
 
 import { payAsYouGoConfigSchema } from '@/lib/pay-as-you-go/config';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+const requiredInProduction = (name: string) =>
+  isProduction
+    ? z.string().min(1, `${name} is required`)
+    : z.string().min(1).default('');
+
 export const env = createEnv({
   extends: [dbEnv, validationsEnv, authEnv, emailEnv],
 
@@ -22,46 +29,42 @@ export const env = createEnv({
     S3_ENDPOINT: z.string().url('S3_ENDPOINT must be a valid URL'),
     S3_REGION: z.string().min(1, 'S3_REGION is required'),
     S3_BUCKET: z.string().min(1, 'S3_BUCKET is required'),
-    S3_ACCESS_KEY_ID: z.string().min(1, 'S3_ACCESS_KEY_ID is required'),
-    S3_SECRET_ACCESS_KEY: z.string().min(1, 'S3_SECRET_ACCESS_KEY is required'),
+    S3_ACCESS_KEY_ID: requiredInProduction('S3_ACCESS_KEY_ID'),
+    S3_SECRET_ACCESS_KEY: requiredInProduction('S3_SECRET_ACCESS_KEY'),
     S3_PUBLIC_URL: z.url('S3_PUBLIC_URL must be a valid URL'),
 
     // ===== Stripe (Required for payments) =====
-    STRIPE_SECRET_KEY: z.string().min(1, 'STRIPE_SECRET_KEY is required'),
-    STRIPE_WEBHOOK_SECRET: z
-      .string()
-      .min(1, 'STRIPE_WEBHOOK_SECRET is required'),
-    STRIPE_CONNECT_WEBHOOK_SECRET: z
-      .string()
-      .min(1, 'STRIPE_CONNECT_WEBHOOK_SECRET is required'),
+    STRIPE_SECRET_KEY: requiredInProduction('STRIPE_SECRET_KEY'),
+    STRIPE_WEBHOOK_SECRET: requiredInProduction('STRIPE_WEBHOOK_SECRET'),
+    STRIPE_CONNECT_WEBHOOK_SECRET: requiredInProduction(
+      'STRIPE_CONNECT_WEBHOOK_SECRET',
+    ),
 
     // Stripe Price IDs (EUR)
-    STRIPE_PRICE_PRO_MONTHLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_MONTHLY is required'),
-    STRIPE_PRICE_PRO_YEARLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_YEARLY is required'),
-    STRIPE_PRICE_ULTRA_MONTHLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_MONTHLY is required'),
-    STRIPE_PRICE_ULTRA_YEARLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_YEARLY is required'),
+    STRIPE_PRICE_PRO_MONTHLY: requiredInProduction(
+      'STRIPE_PRICE_PRO_MONTHLY',
+    ),
+    STRIPE_PRICE_PRO_YEARLY: requiredInProduction('STRIPE_PRICE_PRO_YEARLY'),
+    STRIPE_PRICE_ULTRA_MONTHLY: requiredInProduction(
+      'STRIPE_PRICE_ULTRA_MONTHLY',
+    ),
+    STRIPE_PRICE_ULTRA_YEARLY: requiredInProduction(
+      'STRIPE_PRICE_ULTRA_YEARLY',
+    ),
 
     // Stripe Price IDs (USD)
-    STRIPE_PRICE_PRO_MONTHLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_MONTHLY_USD is required'),
-    STRIPE_PRICE_PRO_YEARLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_YEARLY_USD is required'),
-    STRIPE_PRICE_ULTRA_MONTHLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_MONTHLY_USD is required'),
-    STRIPE_PRICE_ULTRA_YEARLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_YEARLY_USD is required'),
+    STRIPE_PRICE_PRO_MONTHLY_USD: requiredInProduction(
+      'STRIPE_PRICE_PRO_MONTHLY_USD',
+    ),
+    STRIPE_PRICE_PRO_YEARLY_USD: requiredInProduction(
+      'STRIPE_PRICE_PRO_YEARLY_USD',
+    ),
+    STRIPE_PRICE_ULTRA_MONTHLY_USD: requiredInProduction(
+      'STRIPE_PRICE_ULTRA_MONTHLY_USD',
+    ),
+    STRIPE_PRICE_ULTRA_YEARLY_USD: requiredInProduction(
+      'STRIPE_PRICE_ULTRA_YEARLY_USD',
+    ),
 
     // ===== SMS (Required for SMS notifications) =====
     SMS_PROVIDER: z
@@ -71,9 +74,7 @@ export const env = createEnv({
     SMS_PARTNER_API_KEY: z.string().optional(),
 
     // ===== Google Places (Required for address search) =====
-    GOOGLE_PLACES_API_KEY: z
-      .string()
-      .min(1, 'GOOGLE_PLACES_API_KEY is required'),
+    GOOGLE_PLACES_API_KEY: requiredInProduction('GOOGLE_PLACES_API_KEY'),
     GOOGLE_PLACES_CACHE_TTL_HOURS: z.coerce
       .number()
       .int()
@@ -123,7 +124,7 @@ export const env = createEnv({
     GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
 
     // ===== Cron Jobs (Required) =====
-    CRON_SECRET: z.string().min(1, 'CRON_SECRET is required'),
+    CRON_SECRET: requiredInProduction('CRON_SECRET'),
 
     // ===== AI Chat Assistant (Optional) =====
     AI_PROVIDER: z.enum(['anthropic', 'openai', 'google']).optional(),
@@ -222,17 +223,15 @@ export const env = createEnv({
     NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: z.string().default('app'),
 
     // ===== Stripe (Required for payments) =====
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z
-      .string()
-      .min(1, 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is required'),
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: requiredInProduction(
+      'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+    ),
 
     // ===== Web Push (Optional — VAPID public key for subscribe()) =====
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
 
     // ===== PostHog Analytics (Required) =====
-    NEXT_PUBLIC_POSTHOG_KEY: z
-      .string()
-      .min(1, 'NEXT_PUBLIC_POSTHOG_KEY is required'),
+    NEXT_PUBLIC_POSTHOG_KEY: requiredInProduction('NEXT_PUBLIC_POSTHOG_KEY'),
     NEXT_PUBLIC_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
 
     // ===== Umami Analytics (Required) =====
